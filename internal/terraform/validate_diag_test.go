@@ -65,8 +65,15 @@ func TestService_Validate_NonJSONStdoutDoesNotPanic(t *testing.T) {
 	if resp.OK {
 		t.Fatalf("expected OK=false")
 	}
-	if len(resp.Diagnostics) != 0 {
-		t.Errorf("expected no parsed diagnostics on malformed JSON, got %d", len(resp.Diagnostics))
+	if len(resp.Diagnostics) == 0 {
+		t.Fatalf("expected fallback diagnostic on malformed JSON output")
+	}
+	d := resp.Diagnostics[0]
+	if d.Summary == "" && d.Detail == "" {
+		t.Errorf("expected fallback diagnostic to contain useful error text")
+	}
+	if d.Summary != "boom" && d.Detail != "boom" && d.Summary != "not json" && d.Detail != "not json" {
+		t.Errorf("expected fallback diagnostic to surface stderr or stdout parse context, got summary=%q detail=%q", d.Summary, d.Detail)
 	}
 }
 
