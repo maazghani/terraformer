@@ -12,37 +12,37 @@ Allow the agent to modify repo-local files through a safe patch tool.
 
 ### TDD loop
 
-- [ ] Write failing tests for valid patch application.
-- [ ] Write failing tests for invalid patch handling.
-- [ ] Write failing tests for patch path traversal.
-- [ ] Write failing tests for symlink escape.
-- [ ] Write failing tests proving patch application does not run Terraform.
-- [ ] Implement smallest patch service.
-- [ ] Run targeted tests.
-- [ ] Refactor after tests pass.
-- [ ] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
-- [ ] Leave code committed or ready to commit.
+- [x] Write failing tests for valid patch application.
+- [x] Write failing tests for invalid patch handling.
+- [x] Write failing tests for patch path traversal.
+- [x] Write failing tests for symlink escape.
+- [x] Write failing tests proving patch application does not run Terraform.
+- [x] Implement smallest patch service.
+- [x] Run targeted tests.
+- [x] Refactor after tests pass.
+- [x] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
+- [x] Leave code committed or ready to commit.
 
 ### Tasks
 
-- [ ] Define `patch.Service`.
-- [ ] Define structured patch request and response.
-- [ ] Support structured JSON patch format: array of `{path, operation, content}` objects.
-- [ ] Support "write" operations to create/overwrite files.
-- [ ] Support "delete" operations for file removal (if tested).
-- [ ] Validate all target paths before writing.
-- [ ] Apply patches to existing files.
-- [ ] Add support for creating new files if safe and tested.
-- [ ] Return changed files.
-- [ ] Return rejected files.
-- [ ] Fail atomically where practical.
-- [ ] Avoid command execution during patching.
+- [x] Define `patch.Service`.
+- [x] Define structured patch request and response.
+- [x] Support structured JSON patch format: array of `{path, operation, content}` objects.
+- [x] Support "write" operations to create/overwrite files.
+- [x] Support "delete" operations for file removal (if tested).
+- [x] Validate all target paths before writing.
+- [x] Apply patches to existing files.
+- [x] Add support for creating new files if safe and tested.
+- [x] Return changed files.
+- [x] Return rejected files.
+- [x] Fail atomically where practical.
+- [x] Avoid command execution during patching.
 - [ ] Add golden response tests.
-- [ ] Run `go test ./internal/patch ./internal/repo`.
+- [x] Run `go test ./internal/patch ./internal/repo`.
 
 ### Completion criteria
 
-- [ ] `apply_patch` is implemented internally.
-- [ ] Patches cannot escape the repo.
-- [ ] Patch failures are structured.
-- [ ] Patch application does not run Terraform or any shell command.
+- [x] `apply_patch` is implemented internally.
+- [x] Patches cannot escape the repo.
+- [x] Patch failures are structured.
+- [x] Patch application does not run Terraform or any shell command.

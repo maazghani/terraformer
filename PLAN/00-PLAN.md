@@ -110,7 +110,7 @@ terraformer v0 is done when:
 - [x] Phase 3 complete.
 - [x] Phase 4 complete.
 - [x] Phase 5 complete.
-- [ ] Phase 6 pending.
+- [x] Phase 6 complete.
 - [ ] Phase 7 pending.
 - [ ] Phase 8 pending.
 - [ ] Phase 9 pending.
