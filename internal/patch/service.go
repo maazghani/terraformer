@@ -74,8 +74,18 @@ func (s *Service) ApplyPatch(req ApplyPatchRequest) (ApplyPatchResponse, error) 
 
 		switch op.Operation {
 		case "write":
-			// Ensure parent directory exists.
+			// Ensure parent directory exists and is safe.
 			parentDir := filepath.Dir(absPath)
+
+			// Validate parent directory is also safe (in case it's a symlink).
+			relParent := filepath.Dir(op.Path)
+			if relParent != "." {
+				if _, err := safety.ResolvePath(s.root, relParent); err != nil {
+					rejectedFiles = append(rejectedFiles, op.Path)
+					continue
+				}
+			}
+
 			if err := os.MkdirAll(parentDir, 0755); err != nil {
 				rejectedFiles = append(rejectedFiles, op.Path)
 				continue
