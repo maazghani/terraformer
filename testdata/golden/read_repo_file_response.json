@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "path": "main.tf",
+  "content": "resource \"local_file\" \"example\" {}\n",
+  "truncated": false,
+  "warnings": []
+}

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "files": [
+    {
+      "path": "main.tf",
+      "kind": "file"
+    },
+    {
+      "path": "vars.tf",
+      "kind": "file"
+    }
+  ],
+  "truncated": false,
+  "warnings": []
+}
