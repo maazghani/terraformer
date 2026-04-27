@@ -129,3 +129,43 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 		Warnings:    []string{},
 	}
 }
+
+// ValidateRequest is the request for terraform_validate.
+type ValidateRequest struct {
+	JSON bool `json:"json"`
+}
+
+// ValidateResponse is the response for terraform_validate.
+type ValidateResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// Validate runs `terraform validate`, optionally with -json for structured
+// diagnostics.
+func (s *Service) Validate(req ValidateRequest) ValidateResponse {
+	args := []string{"validate"}
+	if req.JSON {
+		args = append(args, "-json")
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	return ValidateResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    []string{},
+	}
+}
