@@ -20,13 +20,29 @@ import (
 	"github.com/maazghani/terraformer/internal/terraform"
 )
 
+// validateLogLevel returns true if level is a valid log level.
+func validateLogLevel(level string) bool {
+	switch level {
+	case "debug", "info", "warn", "error":
+		return true
+	default:
+		return false
+	}
+}
+
 func main() {
 	repoRootFlag := flag.String("repo-root", "", "absolute path to the repository root (required)")
 	portFlag := flag.Int("port", 9001, "TCP port to listen on")
+	logLevelFlag := flag.String("log-level", "info", "log level (debug|info|warn|error)")
 	flag.Parse()
 
 	if *repoRootFlag == "" {
 		fmt.Fprintln(os.Stderr, "error: --repo-root is required")
+		os.Exit(1)
+	}
+
+	if !validateLogLevel(*logLevelFlag) {
+		fmt.Fprintf(os.Stderr, "error: invalid log level %q (must be debug|info|warn|error)\n", *logLevelFlag)
 		os.Exit(1)
 	}
 
@@ -50,6 +66,7 @@ func main() {
 	cfg := httpserver.Config{
 		RepoRoot: *repoRootFlag,
 		Port:     *portFlag,
+		LogLevel: *logLevelFlag,
 	}
 
 	srv := httpserver.New(cfg, repoSvc, tfSvc, patchSvc, os.Stdout)

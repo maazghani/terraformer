@@ -22,6 +22,8 @@ type Config struct {
 	RepoRoot string
 	// Port is the TCP port to listen on (default 9001). Used only by ListenAndServe.
 	Port int
+	// LogLevel is the minimum log level (debug|info|warn|error). Default is "info".
+	LogLevel string
 }
 
 // Server is an HTTP/JSON server that exposes v0 terraformer tools.
@@ -37,13 +39,17 @@ type Server struct {
 // New creates a Server with the given configuration and services. log receives
 // structured JSON log lines (one per request). It must not be nil.
 func New(cfg Config, repoSvc *repo.Service, tfSvc *terraform.Service, patchSvc *patch.Service, log io.Writer) *Server {
+	logLevel := cfg.LogLevel
+	if logLevel == "" {
+		logLevel = "info"
+	}
 	s := &Server{
 		cfg:      cfg,
 		mux:      http.NewServeMux(),
 		repoSvc:  repoSvc,
 		tfSvc:    tfSvc,
 		patchSvc: patchSvc,
-		logger:   newJSONLogger(log),
+		logger:   newJSONLogger(log, logLevel),
 	}
 	s.registerRoutes()
 	return s
