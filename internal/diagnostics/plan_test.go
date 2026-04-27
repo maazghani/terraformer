@@ -7,15 +7,6 @@ import (
 	"testing"
 )
 
-// PlanSummary aggregates resource change counts from terraform show -json output.
-type PlanSummary struct {
-	Create  int `json:"create"`
-	Update  int `json:"update"`
-	Delete  int `json:"delete"`
-	Replace int `json:"replace"`
-	NoOp    int `json:"no_op"`
-}
-
 func TestParsePlanSummary_GoldenOutput(t *testing.T) {
 	// This tests the normalization of Terraform show -json plan output into
 	// a stable PlanSummary structure. The golden file ensures the normalized
