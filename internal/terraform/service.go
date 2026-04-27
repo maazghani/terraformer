@@ -4,10 +4,10 @@
 package terraform
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
+	"github.com/maazghani/terraformer/internal/diagnostics"
 	"github.com/maazghani/terraformer/internal/runner"
 	"github.com/maazghani/terraformer/internal/safety"
 )
@@ -37,16 +37,6 @@ type CommandInfo struct {
 	WorkingDir string   `json:"working_dir"`
 }
 
-// Diagnostic is a normalized diagnostic entry.
-type Diagnostic struct {
-	Severity string `json:"severity"`
-	Summary  string `json:"summary"`
-	Detail   string `json:"detail"`
-	File     string `json:"file"`
-	Line     int    `json:"line"`
-	Column   int    `json:"column"`
-}
-
 // InitRequest is the request for terraform_init.
 // Upgrade, when true, causes terraform init to run with -upgrade so that
 // modules and plugins are upgraded to the latest allowed versions.
@@ -69,7 +59,7 @@ type InitResponse struct {
 	Stderr      string       `json:"stderr"`
 	ExitCode    int          `json:"exit_code"`
 	DurationMs  int64        `json:"duration_ms"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
+	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
 	Warnings    []string     `json:"warnings"`
 }
 
@@ -109,7 +99,7 @@ func (s *Service) Init(req InitRequest) InitResponse {
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
-		Diagnostics: []Diagnostic{},
+		Diagnostics: []diagnostics.Diagnostic{},
 		Warnings:    warnings,
 	}
 	resp.OK = err == nil && res.ExitCode == 0
@@ -134,7 +124,7 @@ type FmtResponse struct {
 	Stderr      string       `json:"stderr"`
 	ExitCode    int          `json:"exit_code"`
 	DurationMs  int64        `json:"duration_ms"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
+	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
 	Warnings    []string     `json:"warnings"`
 }
 
@@ -163,7 +153,7 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
-		Diagnostics: []Diagnostic{},
+		Diagnostics: []diagnostics.Diagnostic{},
 		Warnings:    warnings,
 	}
 }
@@ -181,7 +171,7 @@ type ValidateResponse struct {
 	Stderr      string       `json:"stderr"`
 	ExitCode    int          `json:"exit_code"`
 	DurationMs  int64        `json:"duration_ms"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
+	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
 	Warnings    []string     `json:"warnings"`
 }
 
@@ -196,9 +186,9 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
-	diags := []Diagnostic{}
+	diags := []diagnostics.Diagnostic{}
 	if req.JSON {
-		diags = parseValidateJSON(res.Stdout, res.Stderr)
+		diags = diagnostics.ParseValidateJSON(res.Stdout, res.Stderr)
 	}
 
 	warnings := []string{}
@@ -216,61 +206,6 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 		Diagnostics: diags,
 		Warnings:    warnings,
 	}
-}
-
-// validateJSONOutput mirrors the relevant subset of `terraform validate -json`.
-type validateJSONOutput struct {
-	Diagnostics []validateJSONDiagnostic `json:"diagnostics"`
-}
-
-type validateJSONDiagnostic struct {
-	Severity string             `json:"severity"`
-	Summary  string             `json:"summary"`
-	Detail   string             `json:"detail"`
-	Range    *validateJSONRange `json:"range,omitempty"`
-}
-
-type validateJSONRange struct {
-	Filename string             `json:"filename"`
-	Start    validateJSONOffset `json:"start"`
-}
-
-type validateJSONOffset struct {
-	Line   int `json:"line"`
-	Column int `json:"column"`
-}
-
-func parseValidateJSON(stdout, stderr string) []Diagnostic {
-	var out validateJSONOutput
-	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
-		// Return a best-effort fallback diagnostic so callers always get
-		// actionable feedback even when structured JSON is unavailable.
-		// Severity is always "error" here because a JSON parse failure means
-		// we cannot present structured diagnostics — the raw output may itself
-		// contain errors that Terraform failed to encode as JSON.
-		fallback := Diagnostic{Severity: "error"}
-		if stderr != "" {
-			fallback.Summary = stderr
-		} else {
-			fallback.Summary = stdout
-		}
-		return []Diagnostic{fallback}
-	}
-	diags := make([]Diagnostic, 0, len(out.Diagnostics))
-	for _, d := range out.Diagnostics {
-		nd := Diagnostic{
-			Severity: d.Severity,
-			Summary:  d.Summary,
-			Detail:   d.Detail,
-		}
-		if d.Range != nil {
-			nd.File = d.Range.Filename
-			nd.Line = d.Range.Start.Line
-			nd.Column = d.Range.Start.Column
-		}
-		diags = append(diags, nd)
-	}
-	return diags
 }
 
 // PlanRequest is the request for terraform_plan.
@@ -318,7 +253,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 					Args:       args,
 					WorkingDir: ".",
 				},
-				Diagnostics: []Diagnostic{},
+				Diagnostics: []diagnostics.Diagnostic{},
 				Warnings:    []string{"unsafe plan out path rejected: " + err.Error()},
 			}
 		}
@@ -367,26 +302,17 @@ type ShowJSONRequest struct {
 	PlanPath string `json:"plan_path"`
 }
 
-// PlanSummary aggregates resource change counts from `terraform show -json`.
-type PlanSummary struct {
-	Create  int `json:"create"`
-	Update  int `json:"update"`
-	Delete  int `json:"delete"`
-	Replace int `json:"replace"`
-	NoOp    int `json:"no_op"`
-}
-
 // ShowJSONResponse is the response for terraform_show_json.
 type ShowJSONResponse struct {
-	OK          bool         `json:"ok"`
-	Command     CommandInfo  `json:"command"`
-	Stdout      string       `json:"stdout"`
-	Stderr      string       `json:"stderr"`
-	ExitCode    int          `json:"exit_code"`
-	DurationMs  int64        `json:"duration_ms"`
-	PlanSummary PlanSummary  `json:"plan_summary"`
-	Diagnostics []Diagnostic `json:"diagnostics"`
-	Warnings    []string     `json:"warnings"`
+	OK          bool                     `json:"ok"`
+	Command     CommandInfo              `json:"command"`
+	Stdout      string                   `json:"stdout"`
+	Stderr      string                   `json:"stderr"`
+	ExitCode    int                      `json:"exit_code"`
+	DurationMs  int64                    `json:"duration_ms"`
+	PlanSummary diagnostics.PlanSummary  `json:"plan_summary"`
+	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
+	Warnings    []string                 `json:"warnings"`
 }
 
 // ShowJSON runs `terraform show -json <plan_path>` and parses a normalized
@@ -400,7 +326,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
-			Diagnostics: []Diagnostic{},
+			Diagnostics: []diagnostics.Diagnostic{},
 			Warnings:    []string{"plan_path is required"},
 		}
 	}
@@ -413,7 +339,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
-			Diagnostics: []Diagnostic{},
+			Diagnostics: []diagnostics.Diagnostic{},
 			Warnings:    []string{"unsafe show plan path rejected: " + err.Error()},
 		}
 	}
@@ -428,7 +354,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
-			Diagnostics: []Diagnostic{},
+			Diagnostics: []diagnostics.Diagnostic{},
 			Warnings:    []string{"plan_path must not start with '-': " + req.PlanPath},
 		}
 	}
@@ -451,52 +377,11 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
-		Diagnostics: []Diagnostic{},
+		Diagnostics: []diagnostics.Diagnostic{},
 		Warnings:    warnings,
 	}
 	if resp.OK {
-		resp.PlanSummary = parsePlanSummary(res.Stdout)
+		resp.PlanSummary = diagnostics.ParsePlanSummary(res.Stdout)
 	}
 	return resp
-}
-
-// showJSONPayload mirrors the relevant subset of `terraform show -json`.
-type showJSONPayload struct {
-	ResourceChanges []showJSONResourceChange `json:"resource_changes"`
-}
-
-type showJSONResourceChange struct {
-	Change struct {
-		Actions []string `json:"actions"`
-	} `json:"change"`
-}
-
-func parsePlanSummary(stdout string) PlanSummary {
-	var out showJSONPayload
-	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
-		return PlanSummary{}
-	}
-	var s PlanSummary
-	for _, rc := range out.ResourceChanges {
-		s = applyAction(s, rc.Change.Actions)
-	}
-	return s
-}
-
-func applyAction(s PlanSummary, actions []string) PlanSummary {
-	switch {
-	case len(actions) == 2 && actions[0] == "delete" && actions[1] == "create":
-		s.Replace++
-	case len(actions) == 2 && actions[0] == "create" && actions[1] == "delete":
-		s.Replace++
-	case len(actions) == 1 && actions[0] == "create":
-		s.Create++
-	case len(actions) == 1 && actions[0] == "update":
-		s.Update++
-	case len(actions) == 1 && actions[0] == "delete":
-		s.Delete++
-	case len(actions) == 1 && actions[0] == "no-op":
-		s.NoOp++
-	}
-	return s
 }
