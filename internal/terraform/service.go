@@ -225,7 +225,7 @@ type PlanResponse struct {
 	Stderr             string       `json:"stderr"`
 	ExitCode           int          `json:"exit_code"`
 	DurationMs         int64        `json:"duration_ms"`
-	Diagnostics        []Diagnostic `json:"diagnostics"`
+	Diagnostics        []diagnostics.Diagnostic `json:"diagnostics"`
 	Warnings           []string     `json:"warnings"`
 }
 
@@ -269,7 +269,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 		Stderr:             res.Stderr,
 		ExitCode:           res.ExitCode,
 		DurationMs:         durationMs(res.Duration),
-		Diagnostics:        []Diagnostic{},
+		Diagnostics:        []diagnostics.Diagnostic{},
 		Warnings:           []string{},
 		DesiredStateStatus: "not_checked",
 	}
