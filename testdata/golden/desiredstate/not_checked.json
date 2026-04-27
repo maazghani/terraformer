@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "status": "not_checked",
+  "matched": false,
+  "mismatches": [],
+  "warnings": [
+    "Desired-state was not checked for this operation."
+  ]
+}

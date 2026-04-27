@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "status": "mismatched",
+  "matched": false,
+  "mismatches": [
+    {
+      "address": "local_file.example",
+      "reason": "Expected create but plan contains delete."
+    }
+  ],
+  "warnings": []
+}
