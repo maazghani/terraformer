@@ -87,3 +87,32 @@ func TestMaxResponseBytesFlag(t *testing.T) {
 		t.Errorf("max-response-bytes = %d, want %d", *maxResponseBytes, 2097152)
 	}
 }
+
+// TestTerraformBinFlag verifies that the --terraform-bin flag can be parsed and defaults to "terraform".
+func TestTerraformBinFlag(t *testing.T) {
+	// Reset flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+
+	// Parse with no arguments
+	terraformBin := flag.String("terraform-bin", "terraform", "path to terraform binary")
+	err := flag.CommandLine.Parse([]string{})
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if *terraformBin != "terraform" {
+		t.Errorf("default terraform-bin = %q, want %q", *terraformBin, "terraform")
+	}
+
+	// Reset and parse with custom path
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	terraformBin = flag.String("terraform-bin", "terraform", "path to terraform binary")
+	err = flag.CommandLine.Parse([]string{"--terraform-bin=/usr/local/bin/terraform"})
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if *terraformBin != "/usr/local/bin/terraform" {
+		t.Errorf("terraform-bin = %q, want %q", *terraformBin, "/usr/local/bin/terraform")
+	}
+}
