@@ -12,41 +12,41 @@ Build the foundation that all command execution and safety checks depend on.
 
 ### TDD loop
 
-- [ ] Write failing unit tests for command runner result shape.
-- [ ] Write failing tests for fake runner expectations.
-- [ ] Write failing safety tests for repo root validation.
-- [ ] Write failing safety tests for path traversal.
-- [ ] Implement the smallest runner and safety code needed.
-- [ ] Run targeted tests for `internal/runner` and `internal/safety`.
-- [ ] Refactor after tests pass.
-- [ ] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
-- [ ] Leave code committed or ready to commit.
+- [x] Write failing unit tests for command runner result shape.
+- [x] Write failing tests for fake runner expectations.
+- [x] Write failing safety tests for repo root validation.
+- [x] Write failing safety tests for path traversal.
+- [x] Implement the smallest runner and safety code needed.
+- [x] Run targeted tests for `internal/runner` and `internal/safety`.
+- [x] Refactor after tests pass.
+- [x] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
+- [x] Leave code committed or ready to commit.
 
 ### Tasks
 
-- [ ] Define `runner.Command`.
-- [ ] Define `runner.Result`.
-- [ ] Define `runner.Runner`.
-- [ ] Implement fake runner for tests.
-- [ ] Implement real process runner.
-- [ ] Ensure real runner does not invoke a shell.
-- [ ] Ensure real runner captures stdout.
-- [ ] Ensure real runner captures stderr.
-- [ ] Ensure real runner captures exit code.
-- [ ] Ensure real runner captures duration.
-- [ ] Ensure real runner respects working directory.
-- [ ] Add repo root validation helper.
-- [ ] Add safe path resolution helper.
-- [ ] Add path traversal tests.
-- [ ] Add symlink escape tests.
-- [ ] Add forbidden path tests for `.git`.
-- [ ] Add default exclusion tests for `.terraform`.
-- [ ] Run `go test ./internal/runner`.
+- [x] Define `runner.Command`.
+- [x] Define `runner.Result`.
+- [x] Define `runner.Runner`.
+- [x] Implement fake runner for tests.
+- [x] Implement real process runner.
+- [x] Ensure real runner does not invoke a shell.
+- [x] Ensure real runner captures stdout.
+- [x] Ensure real runner captures stderr.
+- [x] Ensure real runner captures exit code.
+- [x] Ensure real runner captures duration.
+- [x] Ensure real runner respects working directory.
+- [x] Add repo root validation helper.
+- [x] Add safe path resolution helper.
+- [x] Add path traversal tests.
+- [x] Add symlink escape tests.
+- [x] Add forbidden path tests for `.git`.
+- [x] Add default exclusion tests for `.terraform`.
+- [x] Run `go test ./internal/runner`.
 
 ### Completion criteria
 
-- [ ] Runner abstraction exists and is testable.
-- [ ] Fake runner can assert exact command name, args, working directory, and environment behavior.
-- [ ] Path safety rejects traversal and symlink escapes.
-- [ ] Redaction helpers deferred to v0.1.
-- [ ] No Terraform service exists yet except possibly types.
+- [x] Runner abstraction exists and is testable.
+- [x] Fake runner can assert exact command name, args, working directory, and environment behavior.
+- [x] Path safety rejects traversal and symlink escapes.
+- [x] Redaction helpers deferred to v0.1.
+- [x] No Terraform service exists yet except possibly types.
