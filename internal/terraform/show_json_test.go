@@ -32,7 +32,7 @@ func TestService_ShowJSON_DefaultArgs(t *testing.T) {
 		t.Fatalf("expected OK=true, got false; stderr=%q", resp.Stderr)
 	}
 	if err := fake.AssertCalled("terraform", []string{
-		"show", "-json", ".terraformer/plan.tfplan",
+		"show", "-json", "--", ".terraformer/plan.tfplan",
 	}); err != nil {
 		t.Fatalf("unexpected runner call: %v", err)
 	}
