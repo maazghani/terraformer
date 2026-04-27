@@ -24,6 +24,8 @@ type Config struct {
 	Port int
 	// LogLevel is the minimum log level (debug|info|warn|error). Default is "info".
 	LogLevel string
+	// MaxResponseBytes is the maximum size of response bodies in bytes. Default is 1048576 (1 MiB).
+	MaxResponseBytes int
 }
 
 // Server is an HTTP/JSON server that exposes v0 terraformer tools.
@@ -181,6 +183,13 @@ func (s *Server) handleReadRepoFile(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &req) {
 		s.logger.log("warn", "read_repo_file: invalid request body")
 		return
+	}
+	// Apply global maxResponseBytes limit if configured
+	if s.cfg.MaxResponseBytes > 0 {
+		maxBytes := int64(s.cfg.MaxResponseBytes)
+		if req.MaxBytes == 0 || req.MaxBytes > maxBytes {
+			req.MaxBytes = maxBytes
+		}
 	}
 	resp := tools.ReadRepoFile(s.repoSvc, req)
 	s.logger.log("info", "read_repo_file")

@@ -34,6 +34,7 @@ func main() {
 	repoRootFlag := flag.String("repo-root", "", "absolute path to the repository root (required)")
 	portFlag := flag.Int("port", 9001, "TCP port to listen on")
 	logLevelFlag := flag.String("log-level", "info", "log level (debug|info|warn|error)")
+	maxResponseBytesFlag := flag.Int("max-response-bytes", 1048576, "maximum response body size in bytes")
 	flag.Parse()
 
 	if *repoRootFlag == "" {
@@ -64,9 +65,10 @@ func main() {
 	}
 
 	cfg := httpserver.Config{
-		RepoRoot: *repoRootFlag,
-		Port:     *portFlag,
-		LogLevel: *logLevelFlag,
+		RepoRoot:         *repoRootFlag,
+		Port:             *portFlag,
+		LogLevel:         *logLevelFlag,
+		MaxResponseBytes: *maxResponseBytesFlag,
 	}
 
 	srv := httpserver.New(cfg, repoSvc, tfSvc, patchSvc, os.Stdout)
