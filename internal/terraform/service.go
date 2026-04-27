@@ -15,19 +15,30 @@ import (
 // Service constructs and executes allowlisted Terraform commands inside a
 // fixed repo root.
 type Service struct {
-	runner   runner.Runner
-	repoRoot string
+	runner       runner.Runner
+	repoRoot     string
+	terraformBin string
 }
 
 // NewService returns a Service that runs Terraform commands inside repoRoot
 // using r. repoRoot must be an absolute path to an existing directory; it is
 // validated via safety.ValidateRepoRoot before any path operations are
-// performed.
+// performed. The terraform binary is assumed to be "terraform" on PATH.
 func NewService(r runner.Runner, repoRoot string) (*Service, error) {
+	return NewServiceWithBinary(r, repoRoot, "terraform")
+}
+
+// NewServiceWithBinary returns a Service that runs Terraform commands using
+// the specified binary path. This allows custom terraform binary locations.
+func NewServiceWithBinary(r runner.Runner, repoRoot, terraformBin string) (*Service, error) {
 	if err := safety.ValidateRepoRoot(repoRoot); err != nil {
 		return nil, err
 	}
-	return &Service{runner: r, repoRoot: repoRoot}, nil
+	return &Service{
+		runner:       r,
+		repoRoot:     repoRoot,
+		terraformBin: terraformBin,
+	}, nil
 }
 
 // CommandInfo mirrors the "command" object in tool responses.
@@ -77,7 +88,7 @@ func (s *Service) Init(req InitRequest) InitResponse {
 	}
 
 	cmd := runner.Command{
-		Name:       "terraform",
+		Name:       s.terraformBin,
 		Args:       args,
 		WorkingDir: s.repoRoot,
 	}
@@ -138,7 +149,7 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 		args = append(args, "-recursive")
 	}
 
-	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	cmd := runner.Command{Name: s.terraformBin, Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
 	warnings := []string{}
@@ -183,7 +194,7 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 		args = append(args, "-json")
 	}
 
-	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	cmd := runner.Command{Name: s.terraformBin, Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
 	diags := []diagnostics.Diagnostic{}
@@ -249,7 +260,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 				PlanStatus:         "failure",
 				DesiredStateStatus: "not_checked",
 				Command: CommandInfo{
-					Name:       "terraform",
+					Name:       s.terraformBin,
 					Args:       args,
 					WorkingDir: ".",
 				},
@@ -260,7 +271,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 		args = append(args, "-out="+req.Out)
 	}
 
-	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	cmd := runner.Command{Name: s.terraformBin, Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
 	resp := PlanResponse{
@@ -322,7 +333,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		return ShowJSONResponse{
 			OK: false,
 			Command: CommandInfo{
-				Name:       "terraform",
+				Name:       s.terraformBin,
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
@@ -335,7 +346,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		return ShowJSONResponse{
 			OK: false,
 			Command: CommandInfo{
-				Name:       "terraform",
+				Name:       s.terraformBin,
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
@@ -350,7 +361,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		return ShowJSONResponse{
 			OK: false,
 			Command: CommandInfo{
-				Name:       "terraform",
+				Name:       s.terraformBin,
 				Args:       []string{"show", "-json"},
 				WorkingDir: ".",
 			},
@@ -362,7 +373,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 	// Pass "--" before the plan path so Terraform cannot mistake a well-formed
 	// but oddly-named path for an option flag.
 	args := []string{"show", "-json", "--", req.PlanPath}
-	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	cmd := runner.Command{Name: s.terraformBin, Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
 	warnings := []string{}

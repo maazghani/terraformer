@@ -35,6 +35,7 @@ func main() {
 	portFlag := flag.Int("port", 9001, "TCP port to listen on")
 	logLevelFlag := flag.String("log-level", "info", "log level (debug|info|warn|error)")
 	maxResponseBytesFlag := flag.Int("max-response-bytes", 1048576, "maximum response body size in bytes")
+	terraformBinFlag := flag.String("terraform-bin", "terraform", "path to terraform binary")
 	flag.Parse()
 
 	if *repoRootFlag == "" {
@@ -54,9 +55,9 @@ func main() {
 
 	localRunner := runner.NewLocalRunner()
 
-	tfSvc, err := terraform.NewService(localRunner, *repoRootFlag)
+	tfSvc, err := terraform.NewServiceWithBinary(localRunner, *repoRootFlag, *terraformBinFlag)
 	if err != nil {
-		log.Fatalf("terraform.NewService: %v", err)
+		log.Fatalf("terraform.NewServiceWithBinary: %v", err)
 	}
 
 	patchSvc, err := patch.New(*repoRootFlag)
