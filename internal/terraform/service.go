@@ -350,6 +350,19 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		}
 	}
 
+	if _, err := safety.ResolvePath(s.repoRoot, req.PlanPath); err != nil {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: s.repoRoot,
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"unsafe show plan path rejected: " + err.Error()},
+		}
+	}
+
 	args := []string{"show", "-json", req.PlanPath}
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
