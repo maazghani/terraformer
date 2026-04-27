@@ -219,3 +219,73 @@ func parseValidateJSON(stdout string) []Diagnostic {
 	}
 	return diags
 }
+
+// PlanRequest is the request for terraform_plan.
+type PlanRequest struct {
+	Out              string `json:"out"`
+	DetailedExitCode bool   `json:"detailed_exitcode"`
+	Refresh          bool   `json:"refresh"`
+}
+
+// PlanResponse is the response for terraform_plan.
+type PlanResponse struct {
+	OK                 bool         `json:"ok"`
+	PlanStatus         string       `json:"plan_status"`
+	DesiredStateStatus string       `json:"desired_state_status"`
+	Command            CommandInfo  `json:"command"`
+	Stdout             string       `json:"stdout"`
+	Stderr             string       `json:"stderr"`
+	ExitCode           int          `json:"exit_code"`
+	DurationMs         int64        `json:"duration_ms"`
+	Diagnostics        []Diagnostic `json:"diagnostics"`
+	Warnings           []string     `json:"warnings"`
+}
+
+// Plan runs `terraform plan` with safe defaults. It always passes -input=false
+// and treats plan success as necessary-but-not-sufficient: DesiredStateStatus
+// is always reported as "not_checked".
+func (s *Service) Plan(req PlanRequest) PlanResponse {
+	args := []string{"plan", "-input=false"}
+	if !req.Refresh {
+		args = append(args, "-refresh=false")
+	}
+	if req.DetailedExitCode {
+		args = append(args, "-detailed-exitcode")
+	}
+	if req.Out != "" {
+		args = append(args, "-out="+req.Out)
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	resp := PlanResponse{
+		Command:            CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Stdout:             res.Stdout,
+		Stderr:             res.Stderr,
+		ExitCode:           res.ExitCode,
+		DurationMs:         durationMs(res.Duration),
+		Diagnostics:        []Diagnostic{},
+		Warnings:           []string{},
+		DesiredStateStatus: "not_checked",
+	}
+
+	switch {
+	case err != nil:
+		resp.OK = false
+		resp.PlanStatus = "failure"
+	case req.DetailedExitCode && res.ExitCode == 0:
+		resp.OK = true
+		resp.PlanStatus = "no_changes"
+	case req.DetailedExitCode && res.ExitCode == 2:
+		resp.OK = true
+		resp.PlanStatus = "changes_present"
+	case res.ExitCode == 0:
+		resp.OK = true
+		resp.PlanStatus = "ok"
+	default:
+		resp.OK = false
+		resp.PlanStatus = "failure"
+	}
+	return resp
+}
