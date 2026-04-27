@@ -12,15 +12,15 @@ Introduce a minimal desired-state contract and comparison flow. Do not overclaim
 
 ### TDD loop
 
-- [x] Write failing tests for minimal desired-state request validation.
-- [x] Write failing tests for stubbed `not_implemented` or minimal comparison behavior.
-- [x] Write failing tests for unsafe plan JSON paths.
-- [x] Write failing tests for mismatched plan summary behavior if implemented.
-- [x] Implement smallest desired-state code.
-- [x] Run targeted tests.
-- [x] Refactor after tests pass.
-- [x] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
-- [x] Leave code committed or ready to commit.
+- [ ] Write failing tests for minimal desired-state request validation.
+- [ ] Write failing tests for stubbed `not_implemented` or minimal comparison behavior.
+- [ ] Write failing tests for unsafe plan JSON paths.
+- [ ] Write failing tests for mismatched plan summary behavior if implemented.
+- [ ] Implement smallest desired-state code.
+- [ ] Run targeted tests.
+- [ ] Refactor after tests pass.
+- [ ] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
+- [ ] Leave code committed or ready to commit.
 
 ### Initial desired-state model
 
@@ -54,20 +54,20 @@ Initial comparison result
 
 ### Tasks
 
-- [x] Define desired-state schema.
-- [x] Define comparison result schema.
-- [x] Implement request validation.
-- [x] Implement stub response if full comparison is not ready.
-- [x] Implement basic comparison for resource address and actions if practical.
-- [x] Support forbidden actions such as delete.
-- [x] Ensure terraform_plan response remains separate from desired-state result.
-- [x] Ensure check_desired_state is the only tool that declares desired-state status.
-- [x] Add golden tests for matched, mismatched, and not implemented responses.
-- [x] Run go test ./internal/desiredstate ./internal/terraform.
+- [ ] Define desired-state schema.
+- [ ] Define comparison result schema.
+- [ ] Implement request validation.
+- [ ] Implement stub response if full comparison is not ready.
+- [ ] Implement basic comparison for resource address and actions if practical.
+- [ ] Support forbidden actions such as delete.
+- [ ] Ensure terraform_plan response remains separate from desired-state result.
+- [ ] Ensure check_desired_state is the only tool that declares desired-state status.
+- [ ] Add golden tests for matched, mismatched, and not implemented responses.
+- [ ] Run go test ./internal/desiredstate ./internal/terraform.
 
 ### Completion criteria
 
-- [x] Desired-state tool exists internally.
-- [x] It does not pretend to do more than implemented.
-- [x] Plan success alone cannot produce desired-state success.
-- [x] Tests prove matched and mismatched behavior if comparison is implemented.
+- [ ] Desired-state tool exists internally.
+- [ ] It does not pretend to do more than implemented.
+- [ ] Plan success alone cannot produce desired-state success.
+- [ ] Tests prove matched and mismatched behavior if comparison is implemented.

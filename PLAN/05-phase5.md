@@ -12,15 +12,15 @@ Parse Terraform JSON outputs into stable, model-friendly structures.
 
 ### TDD loop
 
-- [x] Write failing tests for Terraform validate JSON diagnostics.
-- [x] Write failing tests for malformed JSON fallback behavior.
-- [x] Write failing tests for plan JSON summary parsing.
-- [x] Write failing golden tests for normalized diagnostics.
-- [x] Implement smallest diagnostics and plan parsing code.
-- [x] Run targeted tests.
-- [x] Refactor after tests pass.
-- [x] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
-- [x] Leave code committed or ready to commit.
+- [ ] Write failing tests for Terraform validate JSON diagnostics.
+- [ ] Write failing tests for malformed JSON fallback behavior.
+- [ ] Write failing tests for plan JSON summary parsing.
+- [ ] Write failing golden tests for normalized diagnostics.
+- [ ] Implement smallest diagnostics and plan parsing code.
+- [ ] Run targeted tests.
+- [ ] Refactor after tests pass.
+- [ ] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
+- [ ] Leave code committed or ready to commit.
 
 ### Tasks
 

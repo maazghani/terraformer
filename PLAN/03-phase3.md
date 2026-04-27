@@ -12,32 +12,32 @@ Implement Terraform tool logic using fake runner tests before any real Terraform
 
 ### TDD loop
 
-- [x] Write failing tests for `terraform_init` command construction.
-- [x] Write failing tests for `terraform_fmt` command construction.
-- [x] Write failing tests for `terraform_validate` command construction.
-- [x] Write failing tests for `terraform_plan` command construction and exit-code normalization.
-- [x] Write failing tests for `terraform_show_json` command construction.
-- [x] Write failing tests proving forbidden commands cannot be constructed.
-- [x] Implement smallest Terraform service code.
-- [x] Run targeted Terraform tests.
-- [x] Refactor after tests pass.
-- [x] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
-- [x] Leave code committed or ready to commit.
+- [ ] Write failing tests for `terraform_init` command construction.
+- [ ] Write failing tests for `terraform_fmt` command construction.
+- [ ] Write failing tests for `terraform_validate` command construction.
+- [ ] Write failing tests for `terraform_plan` command construction and exit-code normalization.
+- [ ] Write failing tests for `terraform_show_json` command construction.
+- [ ] Write failing tests proving forbidden commands cannot be constructed.
+- [ ] Implement smallest Terraform service code.
+- [ ] Run targeted Terraform tests.
+- [ ] Refactor after tests pass.
+- [ ] Update this phase file's checklist and the status tracker in [00-PLAN.md](00-PLAN.md).
+- [ ] Leave code committed or ready to commit.
 
 ### Tasks
 
-- [x] Create `terraform.Service`.
-- [x] Add typed request structs for init, fmt, validate, plan, and show JSON.
-- [x] Add typed response structs for command results.
-- [x] Ensure all Terraform commands use `runner.Runner`.
-- [x] Implement `terraform_init`.
-- [x] Implement `terraform_fmt`.
-- [x] Implement `terraform_validate`.
-- [x] Implement `terraform_plan`.
-- [x] Implement `terraform_show_json`.
-- [x] Normalize plan detailed exit codes.
-- [x] Reject unsafe plan output paths.
-- [x] Reject unsafe show JSON plan paths.
+- [ ] Create `terraform.Service`.
+- [ ] Add typed request structs for init, fmt, validate, plan, and show JSON.
+- [ ] Add typed response structs for command results.
+- [ ] Ensure all Terraform commands use `runner.Runner`.
+- [ ] Implement `terraform_init`.
+- [ ] Implement `terraform_fmt`.
+- [ ] Implement `terraform_validate`.
+- [ ] Implement `terraform_plan`.
+- [ ] Implement `terraform_show_json`.
+- [ ] Normalize plan detailed exit codes.
+- [ ] Reject unsafe plan output paths.
+- [ ] Reject unsafe show JSON plan paths.
 - [ ] Prove `apply` cannot be invoked through the service.
 - [ ] Prove `destroy` cannot be invoked through the service.
 - [ ] Prove arbitrary shell commands cannot be invoked through the service.
