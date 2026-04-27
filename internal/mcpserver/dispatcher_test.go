@@ -163,9 +163,17 @@ func TestDispatcher_ToolsList(t *testing.T) {
 		"read_repo_file", "apply_patch", "check_desired_state",
 	}
 	gotNames := make(map[string]bool)
-	for _, item := range toolsArr {
-		toolMap, _ := item.(map[string]interface{})
-		name, _ := toolMap["name"].(string)
+	for i, item := range toolsArr {
+		toolMap, ok := item.(map[string]interface{})
+		if !ok {
+			t.Errorf("tools[%d] is not an object: %T", i, item)
+			continue
+		}
+		name, ok := toolMap["name"].(string)
+		if !ok || name == "" {
+			t.Errorf("tools[%d] has non-string or empty name: %v", i, toolMap["name"])
+			continue
+		}
 		gotNames[name] = true
 		if toolMap["inputSchema"] == nil {
 			t.Errorf("tool %q has nil inputSchema", name)
