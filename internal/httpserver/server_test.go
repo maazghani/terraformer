@@ -431,3 +431,57 @@ func TestServer_NoUnsafeCommandsReachable(t *testing.T) {
 		})
 	}
 }
+
+// TestServer_ResponseTruncation verifies that large responses are truncated
+// when maxResponseBytes is configured.
+func TestServer_ResponseTruncation(t *testing.T) {
+	root := t.TempDir()
+	// Create a large file that exceeds the max response bytes limit
+	largeContent := strings.Repeat("x", 2000)
+	writeFile(t, filepath.Join(root, "large.txt"), largeContent)
+
+	repoSvc, err := repo.New(root)
+	if err != nil {
+		t.Fatalf("repo.New: %v", err)
+	}
+
+	fakeRunner := runner.NewFakeRunner()
+	tfSvc, err := terraform.NewService(fakeRunner, root)
+	if err != nil {
+		t.Fatalf("terraform.NewService: %v", err)
+	}
+
+	patchSvc, err := patch.New(root)
+	if err != nil {
+		t.Fatalf("patch.New: %v", err)
+	}
+
+	var logBuf bytes.Buffer
+	cfg := httpserver.Config{
+		RepoRoot:         root,
+		Port:             0,
+		MaxResponseBytes: 100, // Set a small limit
+	}
+	srv := httpserver.New(cfg, repoSvc, tfSvc, patchSvc, &logBuf)
+
+	ts := httptest.NewServer(srv)
+	defer ts.Close()
+
+	// Read the large file
+	body := `{"path": "large.txt", "max_bytes": 10000}`
+	result, _ := doPost(t, ts.URL+"/tools/read_repo_file", body)
+
+	// Check that the response indicates truncation
+	if truncated, ok := result["truncated"].(bool); !ok || !truncated {
+		t.Errorf("expected truncated=true for large response, got %v", result["truncated"])
+	}
+
+	// Check that content is actually truncated
+	content, ok := result["content"].(string)
+	if !ok {
+		t.Fatalf("content field missing or not a string")
+	}
+	if len(content) > 100 {
+		t.Errorf("content length = %d, want <= 100", len(content))
+	}
+}
