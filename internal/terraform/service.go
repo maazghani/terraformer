@@ -5,6 +5,7 @@ package terraform
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/maazghani/terraformer/internal/runner"
@@ -315,7 +316,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 				Command: CommandInfo{
 					Name:       "terraform",
 					Args:       args,
-					WorkingDir: s.repoRoot,
+					WorkingDir: ".",
 				},
 				Diagnostics: []Diagnostic{},
 				Warnings:    []string{"unsafe plan out path rejected: " + err.Error()},
@@ -397,7 +398,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 			Command: CommandInfo{
 				Name:       "terraform",
 				Args:       []string{"show", "-json"},
-				WorkingDir: s.repoRoot,
+				WorkingDir: ".",
 			},
 			Diagnostics: []Diagnostic{},
 			Warnings:    []string{"plan_path is required"},
@@ -410,14 +411,31 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 			Command: CommandInfo{
 				Name:       "terraform",
 				Args:       []string{"show", "-json"},
-				WorkingDir: s.repoRoot,
+				WorkingDir: ".",
 			},
 			Diagnostics: []Diagnostic{},
 			Warnings:    []string{"unsafe show plan path rejected: " + err.Error()},
 		}
 	}
 
-	args := []string{"show", "-json", req.PlanPath}
+	// Reject paths starting with '-' to prevent option injection: a path like
+	// "-out=evil" could be misinterpreted as a flag even after "-- path".
+	if strings.HasPrefix(req.PlanPath, "-") {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: ".",
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"plan_path must not start with '-': " + req.PlanPath},
+		}
+	}
+
+	// Pass "--" before the plan path so Terraform cannot mistake a well-formed
+	// but oddly-named path for an option flag.
+	args := []string{"show", "-json", "--", req.PlanPath}
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
