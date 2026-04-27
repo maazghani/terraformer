@@ -24,8 +24,6 @@ Before doing anything else, in this exact order:
 
 If any of those reads contradict each other, stop and surface the conflict. Specs win over phase files; phase files win over `AGENTS.md`; `AGENTS.md` wins over your own assumptions.
 
-If any of those reads contradict each other, stop and surface the conflict. Specs win over phase files; phase files win over `AGENTS.md`; `AGENTS.md` wins over your own assumptions.
-
 ## The Two-Commit Rule (non-negotiable, applied per task)
 
 For **every** task you implement — not the phase as a whole, but each individual task within it:
