@@ -195,7 +195,7 @@ func TestIntegrationPlanValidBasic(t *testing.T) {
 	// Run plan
 	planPath := filepath.Join(fixturePath, "plan.tfplan")
 	req := terraform.PlanRequest{
-		Out:             planPath,
+		Out:              planPath,
 		DetailedExitCode: true,
 		Refresh:          true,
 	}
