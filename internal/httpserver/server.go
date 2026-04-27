@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/maazghani/terraformer/internal/mcpserver"
 	"github.com/maazghani/terraformer/internal/patch"
 	"github.com/maazghani/terraformer/internal/repo"
 	"github.com/maazghani/terraformer/internal/terraform"
@@ -68,8 +69,14 @@ func (s *Server) ListenAndServe(addr string) error {
 }
 
 // registerRoutes wires all v0 tool endpoints. Only POST is accepted; any other
-// method receives a 405 response.
+// method receives a 405 response. The MCP JSON-RPC 2.0 dispatcher is mounted
+// at POST / to handle the Streamable HTTP transport used by clients like Codex.
 func (s *Server) registerRoutes() {
+	// MCP JSON-RPC 2.0 dispatcher at POST /{$} (exact root path only).
+	// Using /{$} ensures only POST / is matched, not all POST paths.
+	mcpDispatcher := mcpserver.New(s.repoSvc, s.tfSvc, s.patchSvc, s.cfg.RepoRoot)
+	s.mux.Handle("POST /{$}", mcpDispatcher)
+
 	s.mux.HandleFunc("POST /tools/terraform_init", s.handleTerraformInit)
 	s.mux.HandleFunc("POST /tools/terraform_fmt", s.handleTerraformFmt)
 	s.mux.HandleFunc("POST /tools/terraform_validate", s.handleTerraformValidate)
