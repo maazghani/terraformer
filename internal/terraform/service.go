@@ -4,6 +4,7 @@
 package terraform
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/maazghani/terraformer/internal/runner"
@@ -158,6 +159,11 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
+	diags := []Diagnostic{}
+	if req.JSON {
+		diags = parseValidateJSON(res.Stdout)
+	}
+
 	return ValidateResponse{
 		OK:          err == nil && res.ExitCode == 0,
 		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
@@ -165,7 +171,51 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
-		Diagnostics: []Diagnostic{},
+		Diagnostics: diags,
 		Warnings:    []string{},
 	}
+}
+
+// validateJSONOutput mirrors the relevant subset of `terraform validate -json`.
+type validateJSONOutput struct {
+	Diagnostics []validateJSONDiagnostic `json:"diagnostics"`
+}
+
+type validateJSONDiagnostic struct {
+	Severity string             `json:"severity"`
+	Summary  string             `json:"summary"`
+	Detail   string             `json:"detail"`
+	Range    *validateJSONRange `json:"range,omitempty"`
+}
+
+type validateJSONRange struct {
+	Filename string             `json:"filename"`
+	Start    validateJSONOffset `json:"start"`
+}
+
+type validateJSONOffset struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+
+func parseValidateJSON(stdout string) []Diagnostic {
+	var out validateJSONOutput
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		return []Diagnostic{}
+	}
+	diags := make([]Diagnostic, 0, len(out.Diagnostics))
+	for _, d := range out.Diagnostics {
+		nd := Diagnostic{
+			Severity: d.Severity,
+			Summary:  d.Summary,
+			Detail:   d.Detail,
+		}
+		if d.Range != nil {
+			nd.File = d.Range.Filename
+			nd.Line = d.Range.Start.Line
+			nd.Column = d.Range.Start.Column
+		}
+		diags = append(diags, nd)
+	}
+	return diags
 }
