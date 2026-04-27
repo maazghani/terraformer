@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "status": "not_implemented",
+  "matched": false,
+  "mismatches": [],
+  "warnings": [
+    "Desired-state comparison is stubbed in this version."
+  ]
+}
