@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/maazghani/terraformer/internal/runner"
+	"github.com/maazghani/terraformer/internal/safety"
 )
 
 // Service constructs and executes allowlisted Terraform commands inside a
@@ -243,7 +244,9 @@ type PlanResponse struct {
 
 // Plan runs `terraform plan` with safe defaults. It always passes -input=false
 // and treats plan success as necessary-but-not-sufficient: DesiredStateStatus
-// is always reported as "not_checked".
+// is always reported as "not_checked". When Out is provided, it is validated
+// to be a repo-relative path inside the repo root before being passed to
+// Terraform; unsafe paths cause Plan to return without invoking the runner.
 func (s *Service) Plan(req PlanRequest) PlanResponse {
 	args := []string{"plan", "-input=false"}
 	if !req.Refresh {
@@ -253,6 +256,20 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 		args = append(args, "-detailed-exitcode")
 	}
 	if req.Out != "" {
+		if _, err := safety.ResolvePath(s.repoRoot, req.Out); err != nil {
+			return PlanResponse{
+				OK:                 false,
+				PlanStatus:         "failure",
+				DesiredStateStatus: "not_checked",
+				Command: CommandInfo{
+					Name:       "terraform",
+					Args:       args,
+					WorkingDir: s.repoRoot,
+				},
+				Diagnostics: []Diagnostic{},
+				Warnings:    []string{"unsafe plan out path rejected: " + err.Error()},
+			}
+		}
 		args = append(args, "-out="+req.Out)
 	}
 
