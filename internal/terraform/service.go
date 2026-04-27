@@ -86,3 +86,46 @@ func (s *Service) Init(_ InitRequest) InitResponse {
 func durationMs(d time.Duration) int64 {
 	return d.Milliseconds()
 }
+
+// FmtRequest is the request for terraform_fmt.
+type FmtRequest struct {
+	Check     bool `json:"check"`
+	Recursive bool `json:"recursive"`
+}
+
+// FmtResponse is the response for terraform_fmt.
+type FmtResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// Fmt runs `terraform fmt` with optional -check and -recursive flags.
+func (s *Service) Fmt(req FmtRequest) FmtResponse {
+	args := []string{"fmt"}
+	if req.Check {
+		args = append(args, "-check")
+	}
+	if req.Recursive {
+		args = append(args, "-recursive")
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	return FmtResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    []string{},
+	}
+}
