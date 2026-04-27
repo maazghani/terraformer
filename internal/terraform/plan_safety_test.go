@@ -10,7 +10,10 @@ import (
 func TestService_Plan_RejectsAbsoluteOutPath(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{Out: "/tmp/evil.tfplan", Refresh: true})
 
@@ -28,7 +31,10 @@ func TestService_Plan_RejectsAbsoluteOutPath(t *testing.T) {
 func TestService_Plan_RejectsTraversalOutPath(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{Out: "../etc/passwd", Refresh: true})
 

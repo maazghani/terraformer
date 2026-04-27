@@ -9,7 +9,10 @@ import (
 func TestService_ShowJSON_RejectsAbsolutePlanPath(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.ShowJSON(ShowJSONRequest{PlanPath: "/etc/passwd"})
 
@@ -24,7 +27,10 @@ func TestService_ShowJSON_RejectsAbsolutePlanPath(t *testing.T) {
 func TestService_ShowJSON_RejectsTraversalPlanPath(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.ShowJSON(ShowJSONRequest{PlanPath: "../../etc/passwd"})
 

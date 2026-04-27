@@ -9,7 +9,11 @@ import (
 func TestService_Plan_DefaultArgsAndDetailedExitcodeNoChanges(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	root := t.TempDir()
+	svc, err := NewService(fake, root)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{
 		Out:              ".terraformer/plan.tfplan",
@@ -32,15 +36,18 @@ func TestService_Plan_DefaultArgsAndDetailedExitcodeNoChanges(t *testing.T) {
 		t.Fatalf("unexpected runner call: %v", err)
 	}
 	calls := fake.Calls()
-	if len(calls) != 1 || calls[0].WorkingDir != "/repo" {
-		t.Fatalf("expected 1 call at /repo, got %+v", calls)
+	if len(calls) != 1 || calls[0].WorkingDir != root {
+		t.Fatalf("expected 1 call at %q, got %+v", root, calls)
 	}
 }
 
 func TestService_Plan_ExitCode2MapsToChangesPresent(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 2}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{
 		Out:              ".terraformer/plan.tfplan",
@@ -62,7 +69,10 @@ func TestService_Plan_ExitCode2MapsToChangesPresent(t *testing.T) {
 func TestService_Plan_ExitCode1MapsToFailure(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 1, Stderr: "boom"}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{
 		Out:              ".terraformer/plan.tfplan",
@@ -81,7 +91,10 @@ func TestService_Plan_ExitCode1MapsToFailure(t *testing.T) {
 func TestService_Plan_RefreshFalseAddsFlag(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	svc.Plan(PlanRequest{
 		Out:              ".terraformer/plan.tfplan",
@@ -99,7 +112,10 @@ func TestService_Plan_RefreshFalseAddsFlag(t *testing.T) {
 func TestService_Plan_NoDetailedExitCodeNoOut(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Plan(PlanRequest{Refresh: true})
 

@@ -19,14 +19,14 @@ type Service struct {
 }
 
 // NewService returns a Service that runs Terraform commands inside repoRoot
-// using r.
+// using r. repoRoot must be an absolute path to an existing directory; it is
+// validated via safety.ValidateRepoRoot before any path operations are
+// performed.
 func NewService(r runner.Runner, repoRoot string) (*Service, error) {
-	validatedRepoRoot, err := safety.ValidateRepoRoot(repoRoot)
-	if err != nil {
+	if err := safety.ValidateRepoRoot(repoRoot); err != nil {
 		return nil, err
 	}
-
-	return &Service{runner: r, repoRoot: validatedRepoRoot}, nil
+	return &Service{runner: r, repoRoot: repoRoot}, nil
 }
 
 // CommandInfo mirrors the "command" object in tool responses.
@@ -127,7 +127,7 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 
 	return FmtResponse{
 		OK:          err == nil && res.ExitCode == 0,
-		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
 		Stdout:      res.Stdout,
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
@@ -167,12 +167,12 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 
 	diags := []Diagnostic{}
 	if req.JSON {
-		diags = parseValidateJSON(res.Stdout)
+		diags = parseValidateJSON(res.Stdout, res.Stderr)
 	}
 
 	return ValidateResponse{
 		OK:          err == nil && res.ExitCode == 0,
-		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
 		Stdout:      res.Stdout,
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,
@@ -204,10 +204,18 @@ type validateJSONOffset struct {
 	Column int `json:"column"`
 }
 
-func parseValidateJSON(stdout string) []Diagnostic {
+func parseValidateJSON(stdout, stderr string) []Diagnostic {
 	var out validateJSONOutput
 	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
-		return []Diagnostic{}
+		// Return a best-effort fallback diagnostic so callers always get
+		// actionable feedback even when structured JSON is unavailable.
+		fallback := Diagnostic{Severity: "error"}
+		if stderr != "" {
+			fallback.Summary = stderr
+		} else {
+			fallback.Summary = stdout
+		}
+		return []Diagnostic{fallback}
 	}
 	diags := make([]Diagnostic, 0, len(out.Diagnostics))
 	for _, d := range out.Diagnostics {
@@ -282,7 +290,7 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 	res, err := s.runner.Run(cmd)
 
 	resp := PlanResponse{
-		Command:            CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Command:            CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
 		Stdout:             res.Stdout,
 		Stderr:             res.Stderr,
 		ExitCode:           res.ExitCode,
@@ -374,7 +382,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 
 	resp := ShowJSONResponse{
 		OK:          err == nil && res.ExitCode == 0,
-		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
 		Stdout:      res.Stdout,
 		Stderr:      res.Stderr,
 		ExitCode:    res.ExitCode,

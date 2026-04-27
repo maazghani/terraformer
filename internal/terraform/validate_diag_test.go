@@ -27,7 +27,10 @@ const validateJSONErrors = `{
 func TestService_Validate_ParsesJSONDiagnostics(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 1, Stdout: validateJSONErrors}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Validate(ValidateRequest{JSON: true})
 
@@ -58,7 +61,10 @@ func TestService_Validate_ParsesJSONDiagnostics(t *testing.T) {
 func TestService_Validate_NonJSONStdoutDoesNotPanic(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 1, Stdout: "not json", Stderr: "boom"}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Validate(ValidateRequest{JSON: true})
 
@@ -80,7 +86,10 @@ func TestService_Validate_NonJSONStdoutDoesNotPanic(t *testing.T) {
 func TestService_Validate_NoJSONFlagSkipsParsing(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0, Stdout: validateJSONErrors}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.Validate(ValidateRequest{JSON: false})
 

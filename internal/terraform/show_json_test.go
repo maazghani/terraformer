@@ -20,7 +20,11 @@ const showJSONOutput = `{
 func TestService_ShowJSON_DefaultArgs(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0, Stdout: showJSONOutput}, nil)
-	svc := NewService(fake, "/repo")
+	root := t.TempDir()
+	svc, err := NewService(fake, root)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.ShowJSON(ShowJSONRequest{PlanPath: ".terraformer/plan.tfplan"})
 
@@ -33,8 +37,8 @@ func TestService_ShowJSON_DefaultArgs(t *testing.T) {
 		t.Fatalf("unexpected runner call: %v", err)
 	}
 	calls := fake.Calls()
-	if len(calls) != 1 || calls[0].WorkingDir != "/repo" {
-		t.Fatalf("expected 1 call at /repo, got %+v", calls)
+	if len(calls) != 1 || calls[0].WorkingDir != root {
+		t.Fatalf("expected 1 call at %q, got %+v", root, calls)
 	}
 	s := resp.PlanSummary
 	if s.Create != 1 || s.Update != 1 || s.Delete != 1 || s.Replace != 1 || s.NoOp != 1 {
@@ -45,7 +49,10 @@ func TestService_ShowJSON_DefaultArgs(t *testing.T) {
 func TestService_ShowJSON_MalformedJSONDoesNotPanic(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0, Stdout: "not json"}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.ShowJSON(ShowJSONRequest{PlanPath: ".terraformer/plan.tfplan"})
 
@@ -61,7 +68,10 @@ func TestService_ShowJSON_MalformedJSONDoesNotPanic(t *testing.T) {
 func TestService_ShowJSON_RequiresPlanPath(t *testing.T) {
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	resp := svc.ShowJSON(ShowJSONRequest{PlanPath: ""})
 

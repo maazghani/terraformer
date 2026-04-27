@@ -23,7 +23,10 @@ var allowedSubcommands = map[string]bool{
 }
 
 func TestService_ExportedMethodsAreAllowlisted(t *testing.T) {
-	svc := NewService(runner.NewFakeRunner(), "/repo")
+	svc, err := NewService(runner.NewFakeRunner(), t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 	typ := reflect.TypeOf(svc)
 
 	var got []string
@@ -61,7 +64,10 @@ func TestService_NeverInvokesForbiddenSubcommand(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			fake := runner.NewFakeRunner()
 			fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-			svc := NewService(fake, "/repo")
+			svc, err := NewService(fake, t.TempDir())
+			if err != nil {
+				t.Fatalf("NewService: %v", err)
+			}
 
 			c.fn(svc)
 
@@ -89,7 +95,10 @@ func TestService_NeverInvokesShell(t *testing.T) {
 	// Drive every exported method and assert no command name resembles a shell.
 	fake := runner.NewFakeRunner()
 	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
-	svc := NewService(fake, "/repo")
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
 
 	svc.Init(InitRequest{})
 	svc.Fmt(FmtRequest{})
