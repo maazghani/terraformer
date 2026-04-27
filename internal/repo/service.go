@@ -5,7 +5,9 @@ package repo
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/maazghani/terraformer/internal/safety"
@@ -155,6 +157,74 @@ func (s *Service) ListFiles(req ListFilesRequest) (ListFilesResponse, error) {
 
 	return ListFilesResponse{
 		Files:     entries,
+		Truncated: truncated,
+		Warnings:  []string{},
+	}, nil
+}
+
+// ReadFileRequest describes the parameters for a file read operation.
+type ReadFileRequest struct {
+	// Path is a repo-relative path to the file to read.
+	Path string
+	// MaxBytes caps the number of bytes read. When zero, the full file is read.
+	// When exceeded, the response has Truncated=true.
+	MaxBytes int64
+}
+
+// ReadFileResponse is returned by ReadFile.
+type ReadFileResponse struct {
+	// Content is the file contents, possibly truncated to MaxBytes.
+	Content string
+	// SizeBytes is the actual file size on disk (not the truncated length).
+	SizeBytes int64
+	// Truncated is true when the file was larger than MaxBytes.
+	Truncated bool
+	// Warnings contains non-fatal advisories.
+	Warnings []string
+}
+
+// ReadFile reads the repo-relative file at req.Path. It enforces path safety,
+// rejects directories, and truncates content to MaxBytes when set.
+func (s *Service) ReadFile(req ReadFileRequest) (ReadFileResponse, error) {
+	// Resolve the path safely.
+	absPath, err := safety.ResolvePath(s.root, req.Path)
+	if err != nil {
+		return ReadFileResponse{}, fmt.Errorf("repo.ReadFile: %w", err)
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return ReadFileResponse{}, fmt.Errorf("repo.ReadFile: %w", err)
+	}
+
+	// Reject directories.
+	if info.IsDir() {
+		return ReadFileResponse{}, fmt.Errorf("repo.ReadFile: %q is a directory", req.Path)
+	}
+
+	actualSize := info.Size()
+
+	f, err := os.Open(absPath)
+	if err != nil {
+		return ReadFileResponse{}, fmt.Errorf("repo.ReadFile: %w", err)
+	}
+	defer f.Close()
+
+	truncated := false
+	var r io.Reader = f
+	if req.MaxBytes > 0 && actualSize > req.MaxBytes {
+		r = io.LimitReader(f, req.MaxBytes)
+		truncated = true
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return ReadFileResponse{}, fmt.Errorf("repo.ReadFile: read error: %w", err)
+	}
+
+	return ReadFileResponse{
+		Content:   string(data),
+		SizeBytes: actualSize,
 		Truncated: truncated,
 		Warnings:  []string{},
 	}, nil
