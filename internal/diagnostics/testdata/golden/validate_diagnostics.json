@@ -1,0 +1,10 @@
+[
+  {
+    "severity": "error",
+    "summary": "Invalid reference",
+    "detail": "A reference to a resource type must be followed by at least one attribute access.",
+    "file": "main.tf",
+    "line": 12,
+    "column": 5
+  }
+]
