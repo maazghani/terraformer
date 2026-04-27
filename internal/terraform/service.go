@@ -306,3 +306,107 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 	}
 	return resp
 }
+
+// ShowJSONRequest is the request for terraform_show_json.
+type ShowJSONRequest struct {
+	PlanPath string `json:"plan_path"`
+}
+
+// PlanSummary aggregates resource change counts from `terraform show -json`.
+type PlanSummary struct {
+	Create  int `json:"create"`
+	Update  int `json:"update"`
+	Delete  int `json:"delete"`
+	Replace int `json:"replace"`
+	NoOp    int `json:"no_op"`
+}
+
+// ShowJSONResponse is the response for terraform_show_json.
+type ShowJSONResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	PlanSummary PlanSummary  `json:"plan_summary"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// ShowJSON runs `terraform show -json <plan_path>` and parses a normalized
+// summary of resource changes when possible.
+func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
+	if req.PlanPath == "" {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: s.repoRoot,
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"plan_path is required"},
+		}
+	}
+
+	args := []string{"show", "-json", req.PlanPath}
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	resp := ShowJSONResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: cmd.WorkingDir},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    []string{},
+	}
+	if resp.OK {
+		resp.PlanSummary = parsePlanSummary(res.Stdout)
+	}
+	return resp
+}
+
+// showJSONPayload mirrors the relevant subset of `terraform show -json`.
+type showJSONPayload struct {
+	ResourceChanges []showJSONResourceChange `json:"resource_changes"`
+}
+
+type showJSONResourceChange struct {
+	Change struct {
+		Actions []string `json:"actions"`
+	} `json:"change"`
+}
+
+func parsePlanSummary(stdout string) PlanSummary {
+	var out showJSONPayload
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		return PlanSummary{}
+	}
+	var s PlanSummary
+	for _, rc := range out.ResourceChanges {
+		s = applyAction(s, rc.Change.Actions)
+	}
+	return s
+}
+
+func applyAction(s PlanSummary, actions []string) PlanSummary {
+	switch {
+	case len(actions) == 2 && actions[0] == "delete" && actions[1] == "create":
+		s.Replace++
+	case len(actions) == 2 && actions[0] == "create" && actions[1] == "delete":
+		s.Replace++
+	case len(actions) == 1 && actions[0] == "create":
+		s.Create++
+	case len(actions) == 1 && actions[0] == "update":
+		s.Update++
+	case len(actions) == 1 && actions[0] == "delete":
+		s.Delete++
+	case len(actions) == 1 && actions[0] == "no-op":
+		s.NoOp++
+	}
+	return s
+}
