@@ -47,3 +47,91 @@ func TestService_Init_DefaultArgs(t *testing.T) {
 		t.Errorf("unexpected response Command.WorkingDir: %q", resp.Command.WorkingDir)
 	}
 }
+
+// TestService_Init_UpgradeAddsFlag verifies that InitRequest.Upgrade=true
+// causes terraform init to be invoked with the -upgrade flag.
+func TestService_Init_UpgradeAddsFlag(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	svc.Init(InitRequest{Upgrade: true})
+
+	if err := fake.AssertCalled("terraform", []string{"init", "-input=false", "-upgrade"}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+}
+
+// TestService_Init_UpgradeFalseDoesNotAddFlag verifies that
+// InitRequest.Upgrade=false (the default) does not add -upgrade.
+func TestService_Init_UpgradeFalseDoesNotAddFlag(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	svc.Init(InitRequest{Upgrade: false})
+
+	if err := fake.AssertCalled("terraform", []string{"init", "-input=false"}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+}
+
+// TestService_Init_BackendFalseAddsFlag verifies that InitRequest.Backend=false
+// causes terraform init to be invoked with -backend=false to skip backend init.
+func TestService_Init_BackendFalseAddsFlag(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	backendFalse := false
+	svc.Init(InitRequest{Backend: &backendFalse})
+
+	if err := fake.AssertCalled("terraform", []string{"init", "-input=false", "-backend=false"}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+}
+
+// TestService_Init_BackendNilDoesNotAddFlag verifies that omitting Backend
+// (nil pointer) does not add any -backend flag, relying on Terraform's default.
+func TestService_Init_BackendNilDoesNotAddFlag(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	svc.Init(InitRequest{Backend: nil})
+
+	if err := fake.AssertCalled("terraform", []string{"init", "-input=false"}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+}
+
+// TestService_Init_UpgradeAndBackendFalse verifies both flags can be combined.
+func TestService_Init_UpgradeAndBackendFalse(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	fake.Register("terraform", runner.Result{ExitCode: 0}, nil)
+	svc, err := NewService(fake, t.TempDir())
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	backendFalse := false
+	svc.Init(InitRequest{Upgrade: true, Backend: &backendFalse})
+
+	if err := fake.AssertCalled("terraform", []string{
+		"init", "-input=false", "-upgrade", "-backend=false",
+	}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+}
