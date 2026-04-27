@@ -20,8 +20,13 @@ type Service struct {
 
 // NewService returns a Service that runs Terraform commands inside repoRoot
 // using r.
-func NewService(r runner.Runner, repoRoot string) *Service {
-	return &Service{runner: r, repoRoot: repoRoot}
+func NewService(r runner.Runner, repoRoot string) (*Service, error) {
+	validatedRepoRoot, err := safety.ValidateRepoRoot(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Service{runner: r, repoRoot: validatedRepoRoot}, nil
 }
 
 // CommandInfo mirrors the "command" object in tool responses.
