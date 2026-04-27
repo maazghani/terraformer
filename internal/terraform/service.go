@@ -93,6 +93,11 @@ func (s *Service) Init(req InitRequest) InitResponse {
 
 	res, err := s.runner.Run(cmd)
 
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
 	resp := InitResponse{
 		Command: CommandInfo{
 			Name:       cmd.Name,
@@ -104,7 +109,7 @@ func (s *Service) Init(req InitRequest) InitResponse {
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
 		Diagnostics: []Diagnostic{},
-		Warnings:    []string{},
+		Warnings:    warnings,
 	}
 	resp.OK = err == nil && res.ExitCode == 0
 	return resp
@@ -145,6 +150,11 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
 	return FmtResponse{
 		OK:          err == nil && res.ExitCode == 0,
 		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
@@ -153,7 +163,7 @@ func (s *Service) Fmt(req FmtRequest) FmtResponse {
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
 		Diagnostics: []Diagnostic{},
-		Warnings:    []string{},
+		Warnings:    warnings,
 	}
 }
 
@@ -190,6 +200,11 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 		diags = parseValidateJSON(res.Stdout, res.Stderr)
 	}
 
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
 	return ValidateResponse{
 		OK:          err == nil && res.ExitCode == 0,
 		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
@@ -198,7 +213,7 @@ func (s *Service) Validate(req ValidateRequest) ValidateResponse {
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
 		Diagnostics: diags,
-		Warnings:    []string{},
+		Warnings:    warnings,
 	}
 }
 
@@ -322,6 +337,9 @@ func (s *Service) Plan(req PlanRequest) PlanResponse {
 		Warnings:           []string{},
 		DesiredStateStatus: "not_checked",
 	}
+	if err != nil {
+		resp.Warnings = append(resp.Warnings, "runner error: "+err.Error())
+	}
 
 	switch {
 	case err != nil:
@@ -403,6 +421,11 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
 	res, err := s.runner.Run(cmd)
 
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
 	resp := ShowJSONResponse{
 		OK:          err == nil && res.ExitCode == 0,
 		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
@@ -411,7 +434,7 @@ func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
 		ExitCode:    res.ExitCode,
 		DurationMs:  durationMs(res.Duration),
 		Diagnostics: []Diagnostic{},
-		Warnings:    []string{},
+		Warnings:    warnings,
 	}
 	if resp.OK {
 		resp.PlanSummary = parsePlanSummary(res.Stdout)
