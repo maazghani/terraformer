@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "path": "big.tf",
+  "content": "01234567",
+  "truncated": true,
+  "warnings": []
+}
