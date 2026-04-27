@@ -485,3 +485,135 @@ func TestServer_ResponseTruncation(t *testing.T) {
 		t.Errorf("content length = %d, want <= 100", len(content))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// MCP JSON-RPC 2.0 dispatcher at POST /
+// ---------------------------------------------------------------------------
+
+// TestServer_MCPInitialize verifies that POST / with a JSON-RPC initialize
+// request returns 200 with Content-Type: application/json and the correct
+// MCP initialize response fields.
+func TestServer_MCPInitialize(t *testing.T) {
+	ts, _, _ := newTestServer(t)
+
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"codex","version":"1.0"}}}`
+	resp, err := http.Post(ts.URL+"/", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	ct := resp.Header.Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("expected Content-Type application/json, got %q", ct)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	rpc, _ := result["result"].(map[string]interface{})
+	if rpc == nil {
+		t.Fatalf("expected result field, got: %v", result)
+	}
+	if v, _ := rpc["protocolVersion"].(string); v != "2024-11-05" {
+		t.Errorf("expected protocolVersion 2024-11-05, got %q", v)
+	}
+}
+
+// TestServer_MCPToolsList verifies that POST / with tools/list returns all 9 tools.
+func TestServer_MCPToolsList(t *testing.T) {
+	ts, _, _ := newTestServer(t)
+
+	body := `{"jsonrpc":"2.0","id":2,"method":"tools/list"}`
+	resp, err := http.Post(ts.URL+"/", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	rpc, _ := result["result"].(map[string]interface{})
+	toolsArr, _ := rpc["tools"].([]interface{})
+	if len(toolsArr) != 9 {
+		t.Errorf("expected 9 tools, got %d", len(toolsArr))
+	}
+}
+
+// TestServer_MCPToolsCall verifies that POST / with tools/call dispatches
+// correctly and returns content[0].type == "text".
+func TestServer_MCPToolsCall(t *testing.T) {
+	ts, _, _ := newTestServer(t)
+
+	body := `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_repo_files","arguments":{}}}`
+	resp, err := http.Post(ts.URL+"/", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	rpc, _ := result["result"].(map[string]interface{})
+	content, _ := rpc["content"].([]interface{})
+	if len(content) == 0 {
+		t.Fatalf("expected content array, got: %v", result)
+	}
+	item, _ := content[0].(map[string]interface{})
+	if typ, _ := item["type"].(string); typ != "text" {
+		t.Errorf("expected content[0].type=text, got %q", typ)
+	}
+}
+
+// TestServer_MCPParseError verifies that POST / with malformed JSON returns
+// a JSON-RPC parse error (-32700) with Content-Type: application/json.
+func TestServer_MCPParseError(t *testing.T) {
+	ts, _, _ := newTestServer(t)
+
+	resp, err := http.Post(ts.URL+"/", "application/json", strings.NewReader("not-json{{{"))
+	if err != nil {
+		t.Fatalf("POST /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	ct := resp.Header.Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("expected Content-Type application/json, got %q", ct)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	errObj, _ := result["error"].(map[string]interface{})
+	code, _ := errObj["code"].(float64)
+	if code != -32700 {
+		t.Errorf("expected error code -32700, got %v", code)
+	}
+}
+
+// TestServer_ExistingRoutesUnaffected verifies that registering POST / does not
+// break the existing /tools/* endpoints.
+func TestServer_ExistingRoutesUnaffected(t *testing.T) {
+	ts, _, _ := newTestServer(t)
+
+	got, resp := doPost(t, ts.URL+"/tools/list_repo_files", `{"path":".","max_files":10}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from /tools/list_repo_files, got %d", resp.StatusCode)
+	}
+	if _, ok := got["ok"]; !ok {
+		t.Error("response from /tools/list_repo_files missing 'ok' field")
+	}
+}
