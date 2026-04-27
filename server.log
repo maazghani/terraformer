@@ -1,0 +1,8 @@
+2026/04/27 05:11:49 {"level":"info","message":"terraformer starting","addr":":9001","repo_root":"/home/runner/work/terraformer/terraformer/testdata/fixtures/valid-basic"}
+{"level":"info","message":"list_repo_files","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"list_repo_files","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"read_repo_file","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"terraform_fmt","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"terraform_validate","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"terraform_plan","time":"2026-04-27T05:11:49Z"}
+{"level":"info","message":"terraform_show_json","time":"2026-04-27T05:11:49Z"}
