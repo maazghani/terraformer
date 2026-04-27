@@ -135,3 +135,37 @@ func TestService_Init_UpgradeAndBackendFalse(t *testing.T) {
 		t.Fatalf("unexpected runner call: %v", err)
 	}
 }
+
+// TestService_CustomTerraformBinary verifies that a custom terraform binary path is used.
+func TestService_CustomTerraformBinary(t *testing.T) {
+	fake := runner.NewFakeRunner()
+	customBin := "/usr/local/bin/terraform"
+	fake.Register(customBin, runner.Result{ExitCode: 0}, nil)
+
+	root := t.TempDir()
+	svc, err := NewServiceWithBinary(fake, root, customBin)
+	if err != nil {
+		t.Fatalf("NewServiceWithBinary: %v", err)
+	}
+
+	resp := svc.Init(InitRequest{})
+
+	if !resp.OK {
+		t.Fatalf("expected OK=true, got false; stderr=%q", resp.Stderr)
+	}
+
+	if err := fake.AssertCalled(customBin, []string{"init", "-input=false"}); err != nil {
+		t.Fatalf("unexpected runner call: %v", err)
+	}
+
+	calls := fake.Calls()
+	if len(calls) != 1 {
+		t.Fatalf("expected exactly 1 call, got %d", len(calls))
+	}
+	if calls[0].Name != customBin {
+		t.Errorf("expected command Name=%q, got %q", customBin, calls[0].Name)
+	}
+	if resp.Command.Name != customBin {
+		t.Errorf("unexpected response Command.Name: %q, want %q", resp.Command.Name, customBin)
+	}
+}
