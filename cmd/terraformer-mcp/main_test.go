@@ -58,3 +58,32 @@ func TestLogLevelValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestMaxResponseBytesFlag verifies that the --max-response-bytes flag can be parsed and defaults to 1048576.
+func TestMaxResponseBytesFlag(t *testing.T) {
+	// Reset flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+
+	// Parse with no arguments
+	maxResponseBytes := flag.Int("max-response-bytes", 1048576, "maximum response body size in bytes")
+	err := flag.CommandLine.Parse([]string{})
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if *maxResponseBytes != 1048576 {
+		t.Errorf("default max-response-bytes = %d, want %d", *maxResponseBytes, 1048576)
+	}
+
+	// Reset and parse with custom value
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	maxResponseBytes = flag.Int("max-response-bytes", 1048576, "maximum response body size in bytes")
+	err = flag.CommandLine.Parse([]string{"--max-response-bytes=2097152"})
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	if *maxResponseBytes != 2097152 {
+		t.Errorf("max-response-bytes = %d, want %d", *maxResponseBytes, 2097152)
+	}
+}
