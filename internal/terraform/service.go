@@ -47,7 +47,15 @@ type Diagnostic struct {
 }
 
 // InitRequest is the request for terraform_init.
-type InitRequest struct{}
+// Upgrade, when true, causes terraform init to run with -upgrade so that
+// modules and plugins are upgraded to the latest allowed versions.
+// Backend controls whether backend initialization is performed. When nil
+// (the default), Terraform's built-in default is used (backend initialized).
+// When set to false, -backend=false is passed to skip backend initialization.
+type InitRequest struct {
+	Upgrade bool  `json:"upgrade"`
+	Backend *bool `json:"backend,omitempty"`
+}
 
 // InitResponse is the response for terraform_init.
 type InitResponse struct {
@@ -62,8 +70,17 @@ type InitResponse struct {
 }
 
 // Init runs `terraform init -input=false` inside the repo root.
-func (s *Service) Init(_ InitRequest) InitResponse {
+// When req.Upgrade is true, -upgrade is appended to upgrade modules and
+// plugins. When req.Backend is explicitly set to false, -backend=false is
+// appended to skip backend initialization.
+func (s *Service) Init(req InitRequest) InitResponse {
 	args := []string{"init", "-input=false"}
+	if req.Upgrade {
+		args = append(args, "-upgrade")
+	}
+	if req.Backend != nil && !*req.Backend {
+		args = append(args, "-backend=false")
+	}
 
 	cmd := runner.Command{
 		Name:       "terraform",
