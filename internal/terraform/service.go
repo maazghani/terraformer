@@ -53,14 +53,14 @@ type InitRequest struct {
 
 // InitResponse is the response for terraform_init.
 type InitResponse struct {
-	OK          bool         `json:"ok"`
-	Command     CommandInfo  `json:"command"`
-	Stdout      string       `json:"stdout"`
-	Stderr      string       `json:"stderr"`
-	ExitCode    int          `json:"exit_code"`
-	DurationMs  int64        `json:"duration_ms"`
+	OK          bool                     `json:"ok"`
+	Command     CommandInfo              `json:"command"`
+	Stdout      string                   `json:"stdout"`
+	Stderr      string                   `json:"stderr"`
+	ExitCode    int                      `json:"exit_code"`
+	DurationMs  int64                    `json:"duration_ms"`
 	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-	Warnings    []string     `json:"warnings"`
+	Warnings    []string                 `json:"warnings"`
 }
 
 // Init runs `terraform init -input=false` inside the repo root.
@@ -118,14 +118,14 @@ type FmtRequest struct {
 
 // FmtResponse is the response for terraform_fmt.
 type FmtResponse struct {
-	OK          bool         `json:"ok"`
-	Command     CommandInfo  `json:"command"`
-	Stdout      string       `json:"stdout"`
-	Stderr      string       `json:"stderr"`
-	ExitCode    int          `json:"exit_code"`
-	DurationMs  int64        `json:"duration_ms"`
+	OK          bool                     `json:"ok"`
+	Command     CommandInfo              `json:"command"`
+	Stdout      string                   `json:"stdout"`
+	Stderr      string                   `json:"stderr"`
+	ExitCode    int                      `json:"exit_code"`
+	DurationMs  int64                    `json:"duration_ms"`
 	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-	Warnings    []string     `json:"warnings"`
+	Warnings    []string                 `json:"warnings"`
 }
 
 // Fmt runs `terraform fmt` with optional -check and -recursive flags.
@@ -165,14 +165,14 @@ type ValidateRequest struct {
 
 // ValidateResponse is the response for terraform_validate.
 type ValidateResponse struct {
-	OK          bool         `json:"ok"`
-	Command     CommandInfo  `json:"command"`
-	Stdout      string       `json:"stdout"`
-	Stderr      string       `json:"stderr"`
-	ExitCode    int          `json:"exit_code"`
-	DurationMs  int64        `json:"duration_ms"`
+	OK          bool                     `json:"ok"`
+	Command     CommandInfo              `json:"command"`
+	Stdout      string                   `json:"stdout"`
+	Stderr      string                   `json:"stderr"`
+	ExitCode    int                      `json:"exit_code"`
+	DurationMs  int64                    `json:"duration_ms"`
 	Diagnostics []diagnostics.Diagnostic `json:"diagnostics"`
-	Warnings    []string     `json:"warnings"`
+	Warnings    []string                 `json:"warnings"`
 }
 
 // Validate runs `terraform validate`, optionally with -json for structured
@@ -217,16 +217,16 @@ type PlanRequest struct {
 
 // PlanResponse is the response for terraform_plan.
 type PlanResponse struct {
-	OK                 bool         `json:"ok"`
-	PlanStatus         string       `json:"plan_status"`
-	DesiredStateStatus string       `json:"desired_state_status"`
-	Command            CommandInfo  `json:"command"`
-	Stdout             string       `json:"stdout"`
-	Stderr             string       `json:"stderr"`
-	ExitCode           int          `json:"exit_code"`
-	DurationMs         int64        `json:"duration_ms"`
+	OK                 bool                     `json:"ok"`
+	PlanStatus         string                   `json:"plan_status"`
+	DesiredStateStatus string                   `json:"desired_state_status"`
+	Command            CommandInfo              `json:"command"`
+	Stdout             string                   `json:"stdout"`
+	Stderr             string                   `json:"stderr"`
+	ExitCode           int                      `json:"exit_code"`
+	DurationMs         int64                    `json:"duration_ms"`
 	Diagnostics        []diagnostics.Diagnostic `json:"diagnostics"`
-	Warnings           []string     `json:"warnings"`
+	Warnings           []string                 `json:"warnings"`
 }
 
 // Plan runs `terraform plan` with safe defaults. It always passes -input=false

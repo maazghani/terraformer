@@ -60,7 +60,7 @@ func TestDesiredState_Validation(t *testing.T) {
 		{
 			name: "forbidden actions list",
 			ds: DesiredState{
-				Resources:         []ResourceExpectation{},
+				Resources:        []ResourceExpectation{},
 				ForbiddenActions: []string{"delete"},
 			},
 			wantErr: false,
@@ -110,22 +110,22 @@ func TestComparisonResult_Basic(t *testing.T) {
 		{
 			name: "not_implemented status",
 			result: ComparisonResult{
-				OK:        true,
-				Status:    "not_implemented",
-				Matched:   false,
+				OK:         true,
+				Status:     "not_implemented",
+				Matched:    false,
 				Mismatches: []Mismatch{},
-				Warnings:  []string{"Desired-state comparison is stubbed in this version."},
+				Warnings:   []string{"Desired-state comparison is stubbed in this version."},
 			},
 			want: "not_implemented",
 		},
 		{
 			name: "matched status",
 			result: ComparisonResult{
-				OK:        true,
-				Status:    "matched",
-				Matched:   true,
+				OK:         true,
+				Status:     "matched",
+				Matched:    true,
 				Mismatches: []Mismatch{},
-				Warnings:  []string{},
+				Warnings:   []string{},
 			},
 			want: "matched",
 		},
