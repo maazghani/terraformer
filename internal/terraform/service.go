@@ -52,6 +52,9 @@ type Diagnostic struct {
 // Backend controls whether backend initialization is performed. When nil
 // (the default), Terraform's built-in default is used (backend initialized).
 // When set to false, -backend=false is passed to skip backend initialization.
+// When set to true, backend initialization is explicitly enabled; this is
+// equivalent to the nil (default) behavior since Terraform initializes backends
+// by default, but may be useful for clarity in request payloads.
 type InitRequest struct {
 	Upgrade bool  `json:"upgrade"`
 	Backend *bool `json:"backend,omitempty"`
@@ -226,6 +229,9 @@ func parseValidateJSON(stdout, stderr string) []Diagnostic {
 	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
 		// Return a best-effort fallback diagnostic so callers always get
 		// actionable feedback even when structured JSON is unavailable.
+		// Severity is always "error" here because a JSON parse failure means
+		// we cannot present structured diagnostics — the raw output may itself
+		// contain errors that Terraform failed to encode as JSON.
 		fallback := Diagnostic{Severity: "error"}
 		if stderr != "" {
 			fallback.Summary = stderr
