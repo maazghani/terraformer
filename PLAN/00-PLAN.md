@@ -112,7 +112,7 @@ terraformer v0 is done when:
 - [x] Phase 5 complete.
 - [x] Phase 6 complete.
 - [x] Phase 7 complete.
-- [ ] Phase 8 in progress (all tasks done except Docker; concurrency deferred to v0.1).
-- [ ] Phase 9 pending.
+- [x] Phase 8 complete (concurrency deferred to v0.1).
+- [x] Phase 9 complete (documentation and demo complete; startup validation deferred).
 
 Update this section after every meaningful implementation session.
