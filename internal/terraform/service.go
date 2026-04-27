@@ -1,0 +1,502 @@
+// Package terraform implements the v0 Terraform command service. All
+// invocations go through a runner.Runner. Only the allowlisted Terraform
+// subcommands (init, fmt, validate, plan, show -json) are supported.
+package terraform
+
+import (
+	"encoding/json"
+	"strings"
+	"time"
+
+	"github.com/maazghani/terraformer/internal/runner"
+	"github.com/maazghani/terraformer/internal/safety"
+)
+
+// Service constructs and executes allowlisted Terraform commands inside a
+// fixed repo root.
+type Service struct {
+	runner   runner.Runner
+	repoRoot string
+}
+
+// NewService returns a Service that runs Terraform commands inside repoRoot
+// using r. repoRoot must be an absolute path to an existing directory; it is
+// validated via safety.ValidateRepoRoot before any path operations are
+// performed.
+func NewService(r runner.Runner, repoRoot string) (*Service, error) {
+	if err := safety.ValidateRepoRoot(repoRoot); err != nil {
+		return nil, err
+	}
+	return &Service{runner: r, repoRoot: repoRoot}, nil
+}
+
+// CommandInfo mirrors the "command" object in tool responses.
+type CommandInfo struct {
+	Name       string   `json:"name"`
+	Args       []string `json:"args"`
+	WorkingDir string   `json:"working_dir"`
+}
+
+// Diagnostic is a normalized diagnostic entry.
+type Diagnostic struct {
+	Severity string `json:"severity"`
+	Summary  string `json:"summary"`
+	Detail   string `json:"detail"`
+	File     string `json:"file"`
+	Line     int    `json:"line"`
+	Column   int    `json:"column"`
+}
+
+// InitRequest is the request for terraform_init.
+// Upgrade, when true, causes terraform init to run with -upgrade so that
+// modules and plugins are upgraded to the latest allowed versions.
+// Backend controls whether backend initialization is performed. When nil
+// (the default), Terraform's built-in default is used (backend initialized).
+// When set to false, -backend=false is passed to skip backend initialization.
+// When set to true, backend initialization is explicitly enabled; this is
+// equivalent to the nil (default) behavior since Terraform initializes backends
+// by default, but may be useful for clarity in request payloads.
+type InitRequest struct {
+	Upgrade bool  `json:"upgrade"`
+	Backend *bool `json:"backend,omitempty"`
+}
+
+// InitResponse is the response for terraform_init.
+type InitResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// Init runs `terraform init -input=false` inside the repo root.
+// When req.Upgrade is true, -upgrade is appended to upgrade modules and
+// plugins. When req.Backend is explicitly set to false, -backend=false is
+// appended to skip backend initialization.
+func (s *Service) Init(req InitRequest) InitResponse {
+	args := []string{"init", "-input=false"}
+	if req.Upgrade {
+		args = append(args, "-upgrade")
+	}
+	if req.Backend != nil && !*req.Backend {
+		args = append(args, "-backend=false")
+	}
+
+	cmd := runner.Command{
+		Name:       "terraform",
+		Args:       args,
+		WorkingDir: s.repoRoot,
+	}
+
+	res, err := s.runner.Run(cmd)
+
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
+	resp := InitResponse{
+		Command: CommandInfo{
+			Name:       cmd.Name,
+			Args:       cmd.Args,
+			WorkingDir: ".",
+		},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    warnings,
+	}
+	resp.OK = err == nil && res.ExitCode == 0
+	return resp
+}
+
+func durationMs(d time.Duration) int64 {
+	return d.Milliseconds()
+}
+
+// FmtRequest is the request for terraform_fmt.
+type FmtRequest struct {
+	Check     bool `json:"check"`
+	Recursive bool `json:"recursive"`
+}
+
+// FmtResponse is the response for terraform_fmt.
+type FmtResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// Fmt runs `terraform fmt` with optional -check and -recursive flags.
+func (s *Service) Fmt(req FmtRequest) FmtResponse {
+	args := []string{"fmt"}
+	if req.Check {
+		args = append(args, "-check")
+	}
+	if req.Recursive {
+		args = append(args, "-recursive")
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
+	return FmtResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    warnings,
+	}
+}
+
+// ValidateRequest is the request for terraform_validate.
+type ValidateRequest struct {
+	JSON bool `json:"json"`
+}
+
+// ValidateResponse is the response for terraform_validate.
+type ValidateResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// Validate runs `terraform validate`, optionally with -json for structured
+// diagnostics.
+func (s *Service) Validate(req ValidateRequest) ValidateResponse {
+	args := []string{"validate"}
+	if req.JSON {
+		args = append(args, "-json")
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	diags := []Diagnostic{}
+	if req.JSON {
+		diags = parseValidateJSON(res.Stdout, res.Stderr)
+	}
+
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
+	return ValidateResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: diags,
+		Warnings:    warnings,
+	}
+}
+
+// validateJSONOutput mirrors the relevant subset of `terraform validate -json`.
+type validateJSONOutput struct {
+	Diagnostics []validateJSONDiagnostic `json:"diagnostics"`
+}
+
+type validateJSONDiagnostic struct {
+	Severity string             `json:"severity"`
+	Summary  string             `json:"summary"`
+	Detail   string             `json:"detail"`
+	Range    *validateJSONRange `json:"range,omitempty"`
+}
+
+type validateJSONRange struct {
+	Filename string             `json:"filename"`
+	Start    validateJSONOffset `json:"start"`
+}
+
+type validateJSONOffset struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+
+func parseValidateJSON(stdout, stderr string) []Diagnostic {
+	var out validateJSONOutput
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		// Return a best-effort fallback diagnostic so callers always get
+		// actionable feedback even when structured JSON is unavailable.
+		// Severity is always "error" here because a JSON parse failure means
+		// we cannot present structured diagnostics — the raw output may itself
+		// contain errors that Terraform failed to encode as JSON.
+		fallback := Diagnostic{Severity: "error"}
+		if stderr != "" {
+			fallback.Summary = stderr
+		} else {
+			fallback.Summary = stdout
+		}
+		return []Diagnostic{fallback}
+	}
+	diags := make([]Diagnostic, 0, len(out.Diagnostics))
+	for _, d := range out.Diagnostics {
+		nd := Diagnostic{
+			Severity: d.Severity,
+			Summary:  d.Summary,
+			Detail:   d.Detail,
+		}
+		if d.Range != nil {
+			nd.File = d.Range.Filename
+			nd.Line = d.Range.Start.Line
+			nd.Column = d.Range.Start.Column
+		}
+		diags = append(diags, nd)
+	}
+	return diags
+}
+
+// PlanRequest is the request for terraform_plan.
+type PlanRequest struct {
+	Out              string `json:"out"`
+	DetailedExitCode bool   `json:"detailed_exitcode"`
+	Refresh          bool   `json:"refresh"`
+}
+
+// PlanResponse is the response for terraform_plan.
+type PlanResponse struct {
+	OK                 bool         `json:"ok"`
+	PlanStatus         string       `json:"plan_status"`
+	DesiredStateStatus string       `json:"desired_state_status"`
+	Command            CommandInfo  `json:"command"`
+	Stdout             string       `json:"stdout"`
+	Stderr             string       `json:"stderr"`
+	ExitCode           int          `json:"exit_code"`
+	DurationMs         int64        `json:"duration_ms"`
+	Diagnostics        []Diagnostic `json:"diagnostics"`
+	Warnings           []string     `json:"warnings"`
+}
+
+// Plan runs `terraform plan` with safe defaults. It always passes -input=false
+// and treats plan success as necessary-but-not-sufficient: DesiredStateStatus
+// is always reported as "not_checked". When Out is provided, it is validated
+// to be a repo-relative path inside the repo root before being passed to
+// Terraform; unsafe paths cause Plan to return without invoking the runner.
+func (s *Service) Plan(req PlanRequest) PlanResponse {
+	args := []string{"plan", "-input=false"}
+	if !req.Refresh {
+		args = append(args, "-refresh=false")
+	}
+	if req.DetailedExitCode {
+		args = append(args, "-detailed-exitcode")
+	}
+	if req.Out != "" {
+		if _, err := safety.ResolvePath(s.repoRoot, req.Out); err != nil {
+			return PlanResponse{
+				OK:                 false,
+				PlanStatus:         "failure",
+				DesiredStateStatus: "not_checked",
+				Command: CommandInfo{
+					Name:       "terraform",
+					Args:       args,
+					WorkingDir: ".",
+				},
+				Diagnostics: []Diagnostic{},
+				Warnings:    []string{"unsafe plan out path rejected: " + err.Error()},
+			}
+		}
+		args = append(args, "-out="+req.Out)
+	}
+
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	resp := PlanResponse{
+		Command:            CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
+		Stdout:             res.Stdout,
+		Stderr:             res.Stderr,
+		ExitCode:           res.ExitCode,
+		DurationMs:         durationMs(res.Duration),
+		Diagnostics:        []Diagnostic{},
+		Warnings:           []string{},
+		DesiredStateStatus: "not_checked",
+	}
+	if err != nil {
+		resp.Warnings = append(resp.Warnings, "runner error: "+err.Error())
+	}
+
+	switch {
+	case err != nil:
+		resp.OK = false
+		resp.PlanStatus = "failure"
+	case req.DetailedExitCode && res.ExitCode == 0:
+		resp.OK = true
+		resp.PlanStatus = "no_changes"
+	case req.DetailedExitCode && res.ExitCode == 2:
+		resp.OK = true
+		resp.PlanStatus = "changes_present"
+	case res.ExitCode == 0:
+		resp.OK = true
+		resp.PlanStatus = "ok"
+	default:
+		resp.OK = false
+		resp.PlanStatus = "failure"
+	}
+	return resp
+}
+
+// ShowJSONRequest is the request for terraform_show_json.
+type ShowJSONRequest struct {
+	PlanPath string `json:"plan_path"`
+}
+
+// PlanSummary aggregates resource change counts from `terraform show -json`.
+type PlanSummary struct {
+	Create  int `json:"create"`
+	Update  int `json:"update"`
+	Delete  int `json:"delete"`
+	Replace int `json:"replace"`
+	NoOp    int `json:"no_op"`
+}
+
+// ShowJSONResponse is the response for terraform_show_json.
+type ShowJSONResponse struct {
+	OK          bool         `json:"ok"`
+	Command     CommandInfo  `json:"command"`
+	Stdout      string       `json:"stdout"`
+	Stderr      string       `json:"stderr"`
+	ExitCode    int          `json:"exit_code"`
+	DurationMs  int64        `json:"duration_ms"`
+	PlanSummary PlanSummary  `json:"plan_summary"`
+	Diagnostics []Diagnostic `json:"diagnostics"`
+	Warnings    []string     `json:"warnings"`
+}
+
+// ShowJSON runs `terraform show -json <plan_path>` and parses a normalized
+// summary of resource changes when possible.
+func (s *Service) ShowJSON(req ShowJSONRequest) ShowJSONResponse {
+	if req.PlanPath == "" {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: ".",
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"plan_path is required"},
+		}
+	}
+
+	if _, err := safety.ResolvePath(s.repoRoot, req.PlanPath); err != nil {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: ".",
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"unsafe show plan path rejected: " + err.Error()},
+		}
+	}
+
+	// Reject paths starting with '-' to prevent option injection: a path like
+	// "-out=evil" could be misinterpreted as a flag even after "-- path".
+	if strings.HasPrefix(req.PlanPath, "-") {
+		return ShowJSONResponse{
+			OK: false,
+			Command: CommandInfo{
+				Name:       "terraform",
+				Args:       []string{"show", "-json"},
+				WorkingDir: ".",
+			},
+			Diagnostics: []Diagnostic{},
+			Warnings:    []string{"plan_path must not start with '-': " + req.PlanPath},
+		}
+	}
+
+	// Pass "--" before the plan path so Terraform cannot mistake a well-formed
+	// but oddly-named path for an option flag.
+	args := []string{"show", "-json", "--", req.PlanPath}
+	cmd := runner.Command{Name: "terraform", Args: args, WorkingDir: s.repoRoot}
+	res, err := s.runner.Run(cmd)
+
+	warnings := []string{}
+	if err != nil {
+		warnings = append(warnings, "runner error: "+err.Error())
+	}
+
+	resp := ShowJSONResponse{
+		OK:          err == nil && res.ExitCode == 0,
+		Command:     CommandInfo{Name: cmd.Name, Args: cmd.Args, WorkingDir: "."},
+		Stdout:      res.Stdout,
+		Stderr:      res.Stderr,
+		ExitCode:    res.ExitCode,
+		DurationMs:  durationMs(res.Duration),
+		Diagnostics: []Diagnostic{},
+		Warnings:    warnings,
+	}
+	if resp.OK {
+		resp.PlanSummary = parsePlanSummary(res.Stdout)
+	}
+	return resp
+}
+
+// showJSONPayload mirrors the relevant subset of `terraform show -json`.
+type showJSONPayload struct {
+	ResourceChanges []showJSONResourceChange `json:"resource_changes"`
+}
+
+type showJSONResourceChange struct {
+	Change struct {
+		Actions []string `json:"actions"`
+	} `json:"change"`
+}
+
+func parsePlanSummary(stdout string) PlanSummary {
+	var out showJSONPayload
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		return PlanSummary{}
+	}
+	var s PlanSummary
+	for _, rc := range out.ResourceChanges {
+		s = applyAction(s, rc.Change.Actions)
+	}
+	return s
+}
+
+func applyAction(s PlanSummary, actions []string) PlanSummary {
+	switch {
+	case len(actions) == 2 && actions[0] == "delete" && actions[1] == "create":
+		s.Replace++
+	case len(actions) == 2 && actions[0] == "create" && actions[1] == "delete":
+		s.Replace++
+	case len(actions) == 1 && actions[0] == "create":
+		s.Create++
+	case len(actions) == 1 && actions[0] == "update":
+		s.Update++
+	case len(actions) == 1 && actions[0] == "delete":
+		s.Delete++
+	case len(actions) == 1 && actions[0] == "no-op":
+		s.NoOp++
+	}
+	return s
+}
