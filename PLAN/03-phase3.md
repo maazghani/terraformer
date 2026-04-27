@@ -12,7 +12,7 @@ Implement Terraform tool logic using fake runner tests before any real Terraform
 
 ### TDD loop
 
-- [ ] Write failing tests for `terraform_init` command construction.
+- [x] Write failing tests for `terraform_init` command construction.
 - [ ] Write failing tests for `terraform_fmt` command construction.
 - [ ] Write failing tests for `terraform_validate` command construction.
 - [ ] Write failing tests for `terraform_plan` command construction and exit-code normalization.
