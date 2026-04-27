@@ -77,7 +77,7 @@ func (s *Service) Init(_ InitRequest) InitResponse {
 		Command: CommandInfo{
 			Name:       cmd.Name,
 			Args:       cmd.Args,
-			WorkingDir: cmd.WorkingDir,
+			WorkingDir: ".",
 		},
 		Stdout:      res.Stdout,
 		Stderr:      res.Stderr,
