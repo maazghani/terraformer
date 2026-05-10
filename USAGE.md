@@ -143,6 +143,22 @@ For detailed tool contracts, see [PLAN/spec/02-mcp-tool-contracts.md](PLAN/spec/
 <details>
 <summary><strong>Codex CLI</strong></summary>
 
+### Protocol Support
+
+The terraformer server now implements the **MCP Streamable HTTP transport** protocol,
+which Codex uses for the startup handshake. The server dispatches JSON-RPC 2.0 requests
+at `POST /`, handling `initialize`, `tools/list`, and `tools/call` as required by the
+MCP specification (protocol version `2024-11-05`).
+
+If you previously saw:
+```
+⚠ MCP client for `terraform` failed to start: MCP startup failed: handshaking with
+MCP server failed: Unexpected content type: Some("text/plain; charset=utf-8; body: 404
+page not found\n"), when send initialize request
+```
+this is now fixed. The server correctly handles the JSON-RPC `initialize` request at
+`POST /` and returns `Content-Type: application/json`.
+
 ### Configuration
 
 Codex CLI uses a TOML config file at `~/.codex/config.toml`:
@@ -164,6 +180,28 @@ codex ask "List all Terraform files using the terraformer server."
 ```
 
 Codex should invoke `list_repo_files` and display results.
+
+### Verification
+
+You can manually verify the MCP handshake with curl:
+```bash
+# Step 1: initialize
+curl -s -X POST http://localhost:9001/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | jq .
+
+# Step 2: tools/list (all 9 tools)
+curl -s -X POST http://localhost:9001/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq .result.tools[].name
+
+# Step 3: tools/call
+curl -s -X POST http://localhost:9001/ \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_repo_files","arguments":{}}}' | jq .
+```
+
+The existing `/tools/*` REST endpoints remain available for non-MCP clients.
 
 ### Tool Reference
 
@@ -213,7 +251,7 @@ For detailed tool contracts, see [PLAN/spec/02-mcp-tool-contracts.md](PLAN/spec/
 
 ### Server Not Responding
 
-1. Verify the server is running:
+1. Verify the server is running (REST endpoint):
    ```bash
    curl http://localhost:9001/tools/list_repo_files \
      -X POST \
@@ -221,9 +259,18 @@ For detailed tool contracts, see [PLAN/spec/02-mcp-tool-contracts.md](PLAN/spec/
      -d '{"path": ".", "max_files": 10}'
    ```
 
-2. Check the server logs for errors (it writes structured JSON logs to stdout/stderr).
+2. Verify the MCP JSON-RPC endpoint (`POST /`) is working:
+   ```bash
+   curl http://localhost:9001/ \
+     -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}'
+   ```
+   This should return JSON with `result.protocolVersion` set to `"2024-11-05"`.
 
-3. Ensure the `--repo-root` path is absolute and points to an existing directory.
+3. Check the server logs for errors (it writes structured JSON logs to stdout/stderr).
+
+4. Ensure the `--repo-root` path is absolute and points to an existing directory.
 
 ### Tool Not Found
 
