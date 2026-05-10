@@ -42,7 +42,7 @@ func AllTools() []ToolDef {
 		},
 		{
 			Name: "list_repo_files",
-			InputSchema: rawJSON(`{"type":"object","properties":{"path":{"type":"string","default":"."},"include_globs":{"type":"array","items":{"type":"string"}},"exclude_globs":{"type":"array","items":{"type":"string"}},"max_files":{"type":"integer","default":200}}}`),
+			InputSchema: rawJSON(`{"type":"object","properties":{"path":{"type":"string","default":"."},"max_files":{"type":"integer","default":200}}}`),
 		},
 		{
 			Name: "read_repo_file",
